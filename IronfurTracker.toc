@@ -1,0 +1,12 @@
+## Interface: 120100
+## Title: Ironfur Tracker
+## Notes: A focused Ironfur stack and duration tracker for Guardian Druids.
+## Author: Sonterix
+## Version: 0.1.0
+## SavedVariables: IronfurTrackerDB
+
+src\Config.lua
+src\Tracker.lua
+src\Bar.lua
+src\EditMode.lua
+src\Core.lua
