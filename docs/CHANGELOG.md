@@ -4,6 +4,10 @@ All notable changes to Ironfur Tracker will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- The settings panel now stays visible while dragging the bar in Edit Mode.
+
 ### Added
 
 - Dragging the bar in Edit Mode now shows alignment guides and snaps to the

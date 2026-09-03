@@ -398,7 +398,9 @@ describe("Placement-only Edit Mode snapping", function()
             local selection = StartControlledSnapDrag(GridSnapInfos(20, 30), 1100.25, 400.75)
             RefreshSnapPreview()
             expect(ShownSnapLineCount()).to_equal(2)
+            expect(ns.EditMode._GetTestState().panel:IsShown()).to_equal(true)
             case.run(selection)
+            expect(ns.EditMode._GetTestState().panel:IsShown()).to_equal(false)
             expect(IronfurTrackerDB.bar.offsetX).to_equal(140.25)
             expect(IronfurTrackerDB.bar.offsetY).to_equal(-139.25)
             ExpectOnlyUIParentAnchors()
@@ -586,6 +588,33 @@ describe("Bear-only presentation", function()
 end)
 
 describe("Edit Mode companion", function()
+    it("keeps settings visible throughout a bar drag and after release", function()
+        Reset()
+        local state = OpenEditor()
+        local panel = state.panel
+        local widthInput = state.rows.width.input
+        widthInput:SetFocus()
+        widthInput:SetText("420")
+
+        _G._RunFrameScript(state.selection, "OnDragStart")
+        expect(ns.EditMode._GetTestState().dragging).to_equal(true)
+        expect(panel:IsShown()).to_equal(true)
+        expect(widthInput:HasFocus()).to_equal(false)
+        expect(bar:GetWidth()).to_equal(420)
+
+        _G._SetFrameCenter(bar, 1120, 460)
+        RefreshSnapPreview()
+        expect(panel:IsShown()).to_equal(true)
+        _G._RunFrameScript(state.selection, "OnDragStop")
+        expect(ns.EditMode._GetTestState().panel).to_equal(panel)
+        expect(panel:IsShown()).to_equal(true)
+        expect(IronfurTrackerDB.bar.offsetX).to_equal(160)
+        expect(IronfurTrackerDB.bar.offsetY).to_equal(-80)
+
+        EditModeManagerFrame:ExitEditMode()
+        expect(panel:IsShown()).to_equal(false)
+    end)
+
     it("shows a Guardian preview, opens settings, and yields to native selection", function()
         Reset()
         local registeredSystems = EditModeManagerFrame.registeredSystemFrames

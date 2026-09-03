@@ -352,9 +352,6 @@ function EditMode.StartDrag()
     end
 
     EditMode.Select()
-    if panel then
-        panel:Hide()
-    end
 
     local barFrame = ns.Bar.GetFrame()
     barFrame:SetMovable(true)
