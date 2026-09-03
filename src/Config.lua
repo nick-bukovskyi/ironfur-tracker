@@ -50,13 +50,6 @@ local function Clamp(value, minimum, maximum)
     return value
 end
 
-local function RoundInteger(value)
-    if value >= 0 then
-        return math.floor(value + 0.5)
-    end
-    return math.ceil(value - 0.5)
-end
-
 local function ValidatePersistedNumber(value, definition)
     if not IsFiniteNumber(value) or not IsAlignedToStep(value, definition) then
         return definition.default
@@ -68,7 +61,7 @@ local function ValidatePersistedOffset(value)
     if not IsFiniteNumber(value) then
         return 0
     end
-    return RoundInteger(value)
+    return value
 end
 
 function Config.Initialize(savedRoot)
@@ -139,8 +132,9 @@ function Config.SetPosition(offsetX, offsetY)
         return false
     end
 
-    database.bar.offsetX = RoundInteger(offsetX)
-    database.bar.offsetY = RoundInteger(offsetY)
+    -- Preserve fractional coordinates from scaled Edit Mode targets and grid lines
+    database.bar.offsetX = offsetX
+    database.bar.offsetY = offsetY
     return true
 end
 

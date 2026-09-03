@@ -30,6 +30,7 @@ local controlsRefreshing = false
 local selection
 local panel
 local rows = {}
+local FinishDrag
 
 local function IsSecret(value)
     return issecretvalue ~= nil and issecretvalue(value)
@@ -265,12 +266,18 @@ local function EnsureSelection()
     selection:SetScript("OnDragStop", function()
         EditMode.StopDrag()
     end)
+    selection:HookScript("OnHide", function()
+        FinishDrag(false)
+        if panel then
+            panel:Hide()
+        end
+    end)
     selection:EnableMouse(false)
     selection:Hide()
     return true
 end
 
-local function FinishDrag()
+FinishDrag = function(applySnap)
     if not dragging then
         local barFrame = ns.Bar.GetFrame()
         if barFrame then
@@ -282,6 +289,7 @@ local function FinishDrag()
     local barFrame = ns.Bar.GetFrame()
     barFrame:StopMovingOrSizing()
     barFrame:SetUserPlaced(false)
+    ns.EditModeSnap.Finish(applySnap and not IsCombatLocked())
     ns.Bar.CaptureCenterOffsets()
     barFrame:SetMovable(false)
     dragging = false
@@ -339,7 +347,7 @@ function EditMode.Select()
 end
 
 function EditMode.StartDrag()
-    if not ShouldShowEditor() then
+    if dragging or not ShouldShowEditor() then
         return
     end
 
@@ -352,10 +360,11 @@ function EditMode.StartDrag()
     barFrame:SetMovable(true)
     barFrame:StartMoving()
     dragging = true
+    ns.EditModeSnap.Begin(barFrame, selection)
 end
 
 function EditMode.StopDrag()
-    FinishDrag()
+    FinishDrag(ShouldShowEditor())
     if selected and ShouldShowEditor() then
         EnsurePanel()
         RefreshControls()
@@ -423,6 +432,7 @@ function EditMode.TryAttachManager()
             return
         end
         if selected then
+            FinishDrag(false)
             selected = false
             if panel then
                 panel:Hide()
@@ -437,6 +447,7 @@ function EditMode.TryAttachManager()
             if hookedManager ~= manager or not selected then
                 return
             end
+            FinishDrag(false)
             selected = false
             if panel then
                 panel:Hide()

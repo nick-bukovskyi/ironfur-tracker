@@ -59,7 +59,7 @@ end
 describe("Loading, persistence, and lifecycle", function()
     it("loads every runtime file in exact TOC order", function()
         expect(table.concat(_G._loadedAddonFiles, ",")).to_equal(
-            "src/Config.lua,src/Tracker.lua,src/Bar.lua,src/EditMode.lua,src/Core.lua"
+            "src/Config.lua,src/Tracker.lua,src/Bar.lua,src/EditModeSnap.lua,src/EditMode.lua,src/Core.lua"
         )
         expect(_G._tocMetadata.SavedVariables).to_equal("IronfurTrackerDB")
     end)
@@ -98,7 +98,7 @@ describe("Loading, persistence, and lifecycle", function()
         expect(normalized.schemaVersion).to_equal(1)
         expect(normalized.bar.width).to_equal(640)
         expect(normalized.bar.height).to_equal(18)
-        expect(normalized.bar.offsetX).to_equal(26)
+        expect(normalized.bar.offsetX).to_equal(25.6)
         expect(normalized.bar.offsetY).to_equal(0)
         expect(IronfurTrackerDB).to_equal(persisted)
         Reset()
@@ -115,6 +115,315 @@ describe("Loading, persistence, and lifecycle", function()
         expect(eventFrame._events.DISPLAY_SIZE_CHANGED).to_equal(true)
         expect(_G._GetEventRegistryCallbackCount("EditMode.Enter")).to_equal(1)
         expect(_G._GetEventRegistryCallbackCount("EditMode.Exit")).to_equal(1)
+    end)
+end)
+
+local function GridSnapInfos(offsetX, offsetY)
+    return {
+        { frame = UIParent, point = "CENTER", relativePoint = "CENTER", distance = 1,
+            offset = offsetX, isHorizontal = true },
+        { frame = UIParent, point = "CENTER", relativePoint = "CENTER", distance = 1,
+            offset = offsetY, isHorizontal = false },
+    }
+end
+
+local function StartControlledSnapDrag(infos, centerX, centerY, enableSnap)
+    local state = OpenEditor()
+    EditModeManagerFrame:SetEnableSnap(enableSnap ~= false)
+    _G._stubMagneticFrameInfos = infos
+    _G._RunFrameScript(state.selection, "OnDragStart")
+    _G._SetFrameCenter(bar, centerX, centerY)
+    return state.selection
+end
+
+local function RefreshSnapPreview()
+    local state = ns.EditModeSnap._GetTestState()
+    _G._RunFrameScript(state.previewFrame, "OnUpdate", 0.016)
+    return ns.EditModeSnap._GetTestState()
+end
+
+local function ShownSnapLineCount()
+    local count = 0
+    for _, line in ipairs(ns.EditModeSnap._GetTestState().lines) do
+        if line:IsShown() then count = count + 1 end
+    end
+    return count
+end
+
+local function ExpectSnapStopped()
+    local state = ns.EditModeSnap._GetTestState()
+    expect(state.active).to_equal(false)
+    expect(state.previewFrame:IsShown()).to_equal(false)
+    expect(state.previewFrame:GetScript("OnUpdate")).to_be_nil()
+    expect(ShownSnapLineCount()).to_equal(0)
+end
+
+local function ExpectOnlyUIParentAnchors()
+    local point, relativeTo, relativePoint = bar:GetPoint()
+    expect(point).to_equal("CENTER")
+    expect(relativeTo).to_equal(UIParent)
+    expect(relativePoint).to_equal("CENTER")
+    for _, anchor in ipairs(bar._pointHistory or {}) do
+        expect(anchor[2]).to_equal(UIParent)
+    end
+end
+
+describe("Placement-only Edit Mode snapping", function()
+    it("uses live snap toggles and keeps free placement when snapping is off", function()
+        Reset()
+        local selection = StartControlledSnapDrag(GridSnapInfos(20, 30), 1100.25, 400.75, false)
+        RefreshSnapPreview()
+        expect(_G._stubMagneticQueryCount).to_equal(0)
+        expect(ShownSnapLineCount()).to_equal(0)
+
+        EditModeManagerFrame:SetEnableSnap(true)
+        RefreshSnapPreview()
+        expect(ShownSnapLineCount()).to_equal(2)
+        EditModeManagerFrame:SetEnableSnap(false)
+        RefreshSnapPreview()
+        expect(ShownSnapLineCount()).to_equal(0)
+
+        _G._RunFrameScript(selection, "OnDragStop")
+        expect(IronfurTrackerDB.bar.offsetX).to_equal(140.25)
+        expect(IronfurTrackerDB.bar.offsetY).to_equal(-139.25)
+        ExpectOnlyUIParentAnchors()
+        ExpectSnapStopped()
+    end)
+
+    it("applies controlled two-axis grid output without rounding or native anchors", function()
+        Reset()
+        local registeredSystems = EditModeManagerFrame.registeredSystemFrames
+        local magneticFrames = EditModeMagnetismManager.magneticFrames
+        local nativePreview = {}
+        EditModeManagerFrame.snapPreviewFrame = nativePreview
+        local infos = GridSnapInfos(13.25, -47.5)
+        local selection = StartControlledSnapDrag(infos, 970, 490)
+        local state = RefreshSnapPreview()
+
+        expect(state.previewFrame._allPoints[1]).to_equal(UIParent)
+        expect(state.previewFrame._frameStrata).to_equal("HIGH")
+        expect(state.previewFrame:IsMouseEnabled()).to_equal(false)
+        expect(ShownSnapLineCount()).to_equal(2)
+        expect(state.lines[1]._setupInfo).to_equal(infos[1])
+        expect(state.lines[1]._setupAnchor).to_equal("CenterVertical")
+        expect(state.lines[2]._setupAnchor).to_equal("CenterHorizontal")
+
+        _G._RunFrameScript(selection, "OnDragStop")
+        expect(IronfurTrackerDB.bar.offsetX).to_equal(13.25)
+        expect(IronfurTrackerDB.bar.offsetY).to_equal(-47.5)
+        expect(EditModeManagerFrame.registeredSystemFrames).to_equal(registeredSystems)
+        expect(EditModeMagnetismManager.magneticFrames).to_equal(magneticFrames)
+        expect(next(magneticFrames)).to_be_nil()
+        expect(EditModeManagerFrame.snapPreviewFrame).to_equal(nativePreview)
+        ExpectOnlyUIParentAnchors()
+        ExpectSnapStopped()
+    end)
+
+    it("converts controlled native-element output to an independent screen position", function()
+        Reset()
+        local target = _G._CreateMagneticFrame(1000, 550, 200, 100)
+        local info = { frame = target, point = "LEFT", relativePoint = "RIGHT",
+            distance = 5, offset = 0, isHorizontal = true }
+        local selection = StartControlledSnapDrag({ info }, 1255, 550)
+        RefreshSnapPreview()
+        expect(ShownSnapLineCount()).to_equal(1)
+
+        _G._RunFrameScript(selection, "OnDragStop")
+        local centerX, centerY = bar:GetCenter()
+        expect(centerX).to_equal(1254)
+        expect(centerY).to_equal(550)
+        expect(IronfurTrackerDB.bar.offsetX).to_equal(294)
+        expect(IronfurTrackerDB.bar.offsetY).to_equal(10)
+        ExpectOnlyUIParentAnchors()
+
+        _G._SetFrameCenter(target, 600, 300)
+        local unchangedX, unchangedY = bar:GetCenter()
+        expect(unchangedX).to_equal(1254)
+        expect(unchangedY).to_equal(550)
+        expect(target.snappedFrames).to_be_nil()
+        expect(bar.snappedToFrame).to_be_nil()
+        ExpectSnapStopped()
+    end)
+
+    it("clears guides for invalid own geometry and recovers during the same drag", function()
+        Reset()
+        local selection = StartControlledSnapDrag(GridSnapInfos(20, 30), 970, 565)
+        RefreshSnapPreview()
+        expect(ShownSnapLineCount()).to_equal(2)
+        local queryCount = _G._stubMagneticQueryCount
+
+        bar._rectOverride = { _G._stubSecretValue, 0, 300, 18 }
+        RefreshSnapPreview()
+        expect(ShownSnapLineCount()).to_equal(0)
+        expect(_G._stubMagneticQueryCount).to_equal(queryCount)
+        bar._rectOverride = nil
+        RefreshSnapPreview()
+        expect(ShownSnapLineCount()).to_equal(2)
+
+        UIParent._effectiveScale = 0
+        RefreshSnapPreview()
+        expect(ShownSnapLineCount()).to_equal(0)
+        UIParent._effectiveScale = nil
+        EditModeMagnetismManager.topLevelParentWidth = _G._stubSecretValue
+        RefreshSnapPreview()
+        expect(ShownSnapLineCount()).to_equal(0)
+        _G._RefreshStubMagnetismBounds()
+        RefreshSnapPreview()
+        expect(ShownSnapLineCount()).to_equal(2)
+        _G._RunFrameScript(selection, "OnDragStop")
+        ExpectSnapStopped()
+    end)
+
+    it("rejects unreadable, forbidden, hidden, or incomplete native candidates", function()
+        Reset()
+        local target = _G._CreateMagneticFrame(1000, 550, 200, 100)
+        local info = { frame = target, point = "LEFT", relativePoint = "RIGHT",
+            distance = 5, offset = 0, isHorizontal = true }
+        local selection = StartControlledSnapDrag({ info }, 1255, 550)
+        RefreshSnapPreview()
+        expect(ShownSnapLineCount()).to_equal(1)
+
+        local cases = {
+            { object = target, key = "_forbidden", value = true },
+            { object = target, key = "_forbidden", value = _G._stubSecretValue },
+            { object = target.Selection, key = "_forbidden", value = _G._stubSecretValue },
+            { object = target, key = "_visibleOverride", value = _G._stubSecretValue },
+            { object = target.Selection, key = "_visibleOverride", value = false },
+            { object = target, key = "_invalidRect", value = true },
+            { object = target, key = "_scale", value = _G._stubSecretValue },
+            { object = target, key = "_scale", value = math.huge },
+            { object = target.Selection, key = "_rectOverride", value = { _G._stubSecretValue, 0, 200, 100 } },
+            { object = target, key = "GetSelectionOffset", value = false },
+        }
+        for _, case in ipairs(cases) do
+            local previous = case.object[case.key]
+            case.object[case.key] = case.value
+            local ok, failure = pcall(RefreshSnapPreview)
+            local shown = ShownSnapLineCount()
+            case.object[case.key] = previous
+            if not ok then error(failure) end
+            expect(shown).to_equal(0)
+            RefreshSnapPreview()
+            expect(ShownSnapLineCount()).to_equal(1)
+        end
+
+        target.Selection._points[1][4] = _G._stubSecretValue
+        RefreshSnapPreview()
+        expect(ShownSnapLineCount()).to_equal(0)
+        target.Selection._points[1][4] = 0
+        RefreshSnapPreview()
+        expect(ShownSnapLineCount()).to_equal(1)
+        _G._RunFrameScript(selection, "OnDragStop")
+        ExpectSnapStopped()
+    end)
+
+    it("falls back to free dragging while native modules are unavailable and recovers", function()
+        Reset()
+        local selection = StartControlledSnapDrag(GridSnapInfos(20, 30), 970, 565)
+        RefreshSnapPreview()
+        expect(ShownSnapLineCount()).to_equal(2)
+
+        local missing = {
+            { object = _G, key = "EditModeManagerFrame" },
+            { object = _G, key = "EditModeMagnetismManager" },
+            { object = _G, key = "EditModeSystemMixin" },
+            { object = _G, key = "MagnetismPreviewLineMixin" },
+            { object = EditModeManagerFrame, key = "IsSnapEnabled" },
+            { object = EditModeMagnetismManager, key = "GetMagneticFrameInfos" },
+            { object = EditModeSystemMixin, key = "GetSnapOffsets" },
+        }
+        for _, case in ipairs(missing) do
+            local previous = case.object[case.key]
+            case.object[case.key] = nil
+            local ok, failure = pcall(RefreshSnapPreview)
+            local shown = ShownSnapLineCount()
+            case.object[case.key] = previous
+            if not ok then error(failure) end
+            expect(shown).to_equal(0)
+            RefreshSnapPreview()
+            expect(ShownSnapLineCount()).to_equal(2)
+        end
+        _G._RunFrameScript(selection, "OnDragStop")
+        ExpectSnapStopped()
+    end)
+
+    it("uses current bar size and scaled native geometry without losing fractions", function()
+        Reset()
+        ns.Config.CommitNumber("width", 400)
+        ns.Config.CommitNumber("height", 30)
+        ns.Bar.ApplyGeometry()
+        UIParent._scale = 0.75
+        _G._RefreshStubMagnetismBounds()
+        local target = _G._CreateMagneticFrame(1500, 875, 100, 50, 0.8)
+        local info = { frame = target, point = "RIGHT", relativePoint = "LEFT",
+            distance = 5, offset = 0, isHorizontal = true }
+        local selection = StartControlledSnapDrag({ info }, 955, 700)
+        RefreshSnapPreview()
+        expect(ShownSnapLineCount()).to_equal(1)
+        _G._RunFrameScript(selection, "OnDragStop")
+
+        local centerX, centerY = bar:GetCenter()
+        expect(centerX).to_be_close_to(956.4)
+        expect(centerY).to_equal(700)
+        expect(IronfurTrackerDB.bar.offsetX).to_be_close_to(-3.6)
+        expect(IronfurTrackerDB.bar.offsetY).to_equal(160)
+        expect(bar:GetWidth()).to_equal(400)
+        expect(bar:GetHeight()).to_equal(30)
+        Fire("UI_SCALE_CHANGED")
+        local restoredX, restoredY = bar:GetCenter()
+        expect(restoredX).to_be_close_to(956.4)
+        expect(restoredY).to_equal(700)
+        ExpectOnlyUIParentAnchors()
+        ExpectSnapStopped()
+    end)
+
+    local cancellationCases = {
+        { name = "combat entry", run = function()
+            _G._stubInCombat = true
+            Fire("PLAYER_REGEN_DISABLED")
+        end },
+        { name = "Edit Mode exit", run = function() EditModeManagerFrame:ExitEditMode() end },
+        { name = "hidden native selections", run = function() EditModeManagerFrame:HideSystemSelections() end },
+        { name = "selection hiding", run = function(selection) selection:Hide() end },
+        { name = "Guardian specialization loss", run = function()
+            _G._stubSpecializationID = 105
+            Fire("PLAYER_SPECIALIZATION_CHANGED", "player")
+        end },
+        { name = "native system selection", run = function() EditModeManagerFrame:SelectSystem({}) end },
+        { name = "native deselection", run = function() EditModeManagerFrame:ClearSelectedSystem() end },
+    }
+    for _, case in ipairs(cancellationCases) do
+        it("stops preview work and does not snap after " .. case.name, function()
+            Reset()
+            local selection = StartControlledSnapDrag(GridSnapInfos(20, 30), 1100.25, 400.75)
+            RefreshSnapPreview()
+            expect(ShownSnapLineCount()).to_equal(2)
+            case.run(selection)
+            expect(IronfurTrackerDB.bar.offsetX).to_equal(140.25)
+            expect(IronfurTrackerDB.bar.offsetY).to_equal(-139.25)
+            ExpectOnlyUIParentAnchors()
+            ExpectSnapStopped()
+        end)
+    end
+
+    it("reuses preview frames and lines across repeated drags", function()
+        Reset()
+        local selection = StartControlledSnapDrag(GridSnapInfos(20, 30), 970, 565)
+        local first = RefreshSnapPreview()
+        local previewFrame = first.previewFrame
+        local firstLine, secondLine = first.lines[1], first.lines[2]
+        local frameCount = #_G._allFrames
+        _G._RunFrameScript(selection, "OnDragStop")
+
+        _G._RunFrameScript(selection, "OnDragStart")
+        _G._SetFrameCenter(bar, 970, 565)
+        local second = RefreshSnapPreview()
+        expect(second.previewFrame).to_equal(previewFrame)
+        expect(second.lines[1]).to_equal(firstLine)
+        expect(second.lines[2]).to_equal(secondLine)
+        expect(#_G._allFrames).to_equal(frameCount)
+        _G._RunFrameScript(selection, "OnDragStop")
+        ExpectSnapStopped()
     end)
 end)
 

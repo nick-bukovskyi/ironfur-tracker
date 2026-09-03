@@ -8,5 +8,6 @@
 src\Config.lua
 src\Tracker.lua
 src\Bar.lua
+src\EditModeSnap.lua
 src\EditMode.lua
 src\Core.lua

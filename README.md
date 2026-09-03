@@ -23,6 +23,8 @@ stack count.
   the bar hidden. Returning to Bear Form shows the remaining time.
 - Provides Edit Mode controls for moving the bar and changing its width and
   height.
+- Snaps the dragged bar to Blizzard's grid, screen guides, and eligible visible
+  Edit Mode elements when snapping is enabled.
 - Saves bar size and position account-wide immediately.
 - Has no addon slash commands or external libraries.
 
@@ -33,6 +35,10 @@ preview appears even when the player is not in Bear Form and no applications
 are active.
 
 - Drag the preview to move the bar.
+- Use Blizzard's **Enable Snap**, **Show Grid**, and **Grid Spacing** controls
+  to choose snapping behavior. Alignment guides appear while dragging, and the
+  bar snaps into place when released. Hiding the grid disables grid snapping
+  without disabling snapping to eligible elements or screen guides.
 - Click the preview to open its settings panel.
 - Use either the slider or number field for bar width and height.
 - Use **Reset to Defaults** to restore a 300 by 18 bar at screen center.
@@ -40,6 +46,11 @@ are active.
 Width accepts whole numbers from 80 to 1000. Height accepts whole numbers from
 8 to 128. These account-wide choices are owned by Ironfur Tracker and are not
 part of Blizzard Edit Mode layout profiles, imports, exports, Save, or Revert.
+
+Snapping sets the bar's position; it does not attach the bar to another element.
+Moving that element afterward leaves Ironfur Tracker where it was placed.
+Blizzard elements do not snap toward Ironfur Tracker, and unrelated addon frames
+are not added as snapping targets.
 
 ## Install
 

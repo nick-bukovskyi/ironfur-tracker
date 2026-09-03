@@ -6,6 +6,9 @@ All notable changes to Ironfur Tracker will be documented in this file.
 
 ### Added
 
+- Dragging the bar in Edit Mode now shows alignment guides and snaps to the
+  grid, screen guides, and eligible visible elements using Blizzard's snapping
+  controls. The bar stays in its placed position if another element moves later.
 - The bar can now be moved while Blizzard Edit Mode is open.
 - Edit Mode now offers linked slider and number controls for bar width and
   height.

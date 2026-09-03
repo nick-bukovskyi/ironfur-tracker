@@ -59,12 +59,42 @@ function FrameMixin:GetName() return self._name end
 function FrameMixin:SetSize(width, height) self._width = width; self._height = height end
 function FrameMixin:SetWidth(width) self._width = width end
 function FrameMixin:SetHeight(height) self._height = height end
-function FrameMixin:GetWidth() return self._width or 0 end
-function FrameMixin:GetHeight() return self._height or 0 end
+function FrameMixin:GetWidth()
+    local target = self._allPoints and self._allPoints[1]
+    return target and target:GetWidth() or self._width or 0
+end
+function FrameMixin:GetHeight()
+    local target = self._allPoints and self._allPoints[1]
+    return target and target:GetHeight() or self._height or 0
+end
 function FrameMixin:GetSize() return self:GetWidth(), self:GetHeight() end
+function FrameMixin:GetScale() return self._scale or 1 end
+function FrameMixin:SetScale(value) self._scale = value end
+function FrameMixin:GetEffectiveScale()
+    if self._effectiveScale ~= nil then return self._effectiveScale end
+    local parentScale = self._parent and self._parent:GetEffectiveScale() or 1
+    return parentScale * self:GetScale()
+end
+function FrameMixin:IsForbidden()
+    if self._forbidden ~= nil then return self._forbidden end
+    return false
+end
 
 function FrameMixin:SetPoint(...)
-    self._point = { ... }
+    local values = { ... }
+    self._points = self._points or {}
+    local replaced = false
+    for index, existing in ipairs(self._points) do
+        if existing[1] == values[1] then
+            self._points[index] = values
+            replaced = true
+            break
+        end
+    end
+    if not replaced then self._points[#self._points + 1] = values end
+    self._point = self._points[1]
+    self._pointHistory = self._pointHistory or {}
+    self._pointHistory[#self._pointHistory + 1] = values
     local point, relativeTo, relativePoint, offsetX, offsetY = ...
     if point == "CENTER" and relativePoint == "CENTER"
         and relativeTo and relativeTo.GetCenter then
@@ -76,23 +106,46 @@ function FrameMixin:SetPoint(...)
     end
 end
 
-function FrameMixin:GetPoint()
-    if not self._point then return nil end
-    return unpackValues(self._point)
+function FrameMixin:GetPoint(index)
+    local point = self._points and self._points[index or 1]
+    if not point then return nil end
+    return unpackValues(point)
 end
+function FrameMixin:GetNumPoints() return #(self._points or {}) end
 
 function FrameMixin:ClearAllPoints()
     self._point = nil
+    self._points = nil
+    self._allPoints = nil
     self._centerX = nil
     self._centerY = nil
 end
 
-function FrameMixin:SetAllPoints(...) self._allPoints = { ... } end
+function FrameMixin:SetAllPoints(target)
+    self._allPoints = { target }
+    self._points = {
+        { "TOPLEFT", target, "TOPLEFT", 0, 0 },
+        { "BOTTOMRIGHT", target, "BOTTOMRIGHT", 0, 0 },
+    }
+    self._point = self._points[1]
+end
 function FrameMixin:GetCenter()
+    local target = self._allPoints and self._allPoints[1]
+    if target then return target:GetCenter() end
     if self._centerX ~= nil and self._centerY ~= nil then
         return self._centerX, self._centerY
     end
     return self:GetWidth() / 2, self:GetHeight() / 2
+end
+function FrameMixin:GetRect()
+    if self._invalidRect then return nil end
+    if self._rectOverride then return unpackValues(self._rectOverride) end
+    local centerX, centerY = self:GetCenter()
+    local width, height = self:GetSize()
+    if type(centerX) ~= "number" or type(centerY) ~= "number" then
+        return centerX, centerY, width, height
+    end
+    return centerX - width / 2, centerY - height / 2, width, height
 end
 
 function FrameMixin:SetFrameStrata(strata) self._frameStrata = strata end
@@ -146,7 +199,10 @@ function FrameMixin:Hide()
 end
 
 function FrameMixin:IsShown() return self._shown == true end
-function FrameMixin:IsVisible() return self:IsShown() end
+function FrameMixin:IsVisible()
+    if self._visibleOverride ~= nil then return self._visibleOverride end
+    return self:IsShown()
+end
 
 function FrameMixin:CreateTexture(name, layer, template, subLevel)
     if name ~= nil then AssertType(name, "string", "texture name") end
@@ -162,6 +218,34 @@ function FrameMixin:CreateTexture(name, layer, template, subLevel)
     self._textures = self._textures or {}
     self._textures[#self._textures + 1] = texture
     return texture
+end
+
+function FrameMixin:CreateLine(name, layer, template, ...)
+    AssertNoExtraArguments("CreateLine", ...)
+    if name ~= nil then AssertType(name, "string", "line name") end
+    if layer ~= nil then AssertType(layer, "string", "line layer") end
+    if template ~= "MagnetismPreviewLineTemplate" then
+        error("unexpected line template: " .. tostring(template), 2)
+    end
+    local line = setmetatable({
+        _parent = self,
+        _template = template,
+        _layer = layer,
+        _shown = true,
+    }, TextureMixin)
+    function line:Setup(info, anchor, ...)
+        AssertNoExtraArguments("MagnetismPreviewLine:Setup", ...)
+        AssertType(info, "table", "magnetic frame info")
+        AssertType(anchor, "string", "preview anchor")
+        self._setupInfo = info
+        self._setupAnchor = anchor
+        self._setupCount = (self._setupCount or 0) + 1
+        self._lineParent = UIParent
+        self:Show()
+    end
+    self._lines = self._lines or {}
+    self._lines[#self._lines + 1] = line
+    return line
 end
 
 function FrameMixin:CreateFontString(name, layer, template)
@@ -475,6 +559,193 @@ function EditModeManagerFrame:ExitEditMode()
     self:HideSystemSelections()
     EventRegistry:TriggerEvent("EditMode.Exit")
 end
+function EditModeManagerFrame:IsSnapEnabled() return self._snapEnabled == true end
+function EditModeManagerFrame:SetEnableSnap(value) self._snapEnabled = value and true or false end
+function EditModeManagerFrame:RegisterSystemFrame()
+    error("third-party native Edit Mode registration is outside this contract", 2)
+end
+function EditModeManagerFrame:SetSnapPreviewFrame()
+    error("the add-on must not own Blizzard's snap preview frame", 2)
+end
+
+-- These selected build-matched geometry formulas are the native contracts used
+-- by the local mover adapter. The native choice/search algorithm is not copied.
+EditModeSystemMixin = {}
+
+function EditModeSystemMixin:GetScaledSelectionSides()
+    local left, bottom, width, height = self.Selection:GetRect()
+    local scale = self:GetScale()
+    return left * scale, (left + width) * scale, bottom * scale, (bottom + height) * scale
+end
+function EditModeSystemMixin:GetScaledSelectionCenter()
+    local x, y = self.Selection:GetCenter()
+    local scale = self:GetScale()
+    return x * scale, y * scale
+end
+function EditModeSystemMixin:GetScaledCenter()
+    local x, y = self:GetCenter()
+    local scale = self:GetScale()
+    return x * scale, y * scale
+end
+function EditModeSystemMixin:GetLeftOffset()
+    return select(4, self.Selection:GetPoint(1)) - 2
+end
+function EditModeSystemMixin:GetRightOffset()
+    return select(4, self.Selection:GetPoint(2)) + 2
+end
+function EditModeSystemMixin:GetTopOffset()
+    return select(5, self.Selection:GetPoint(1)) + 2
+end
+function EditModeSystemMixin:GetBottomOffset()
+    return select(5, self.Selection:GetPoint(2)) - 2
+end
+function EditModeSystemMixin:GetSelectionOffset(point, forYOffset)
+    local offset
+    if point == "LEFT" then offset = self:GetLeftOffset()
+    elseif point == "RIGHT" then offset = self:GetRightOffset()
+    elseif point == "TOP" then offset = self:GetTopOffset()
+    elseif point == "BOTTOM" then offset = self:GetBottomOffset()
+    elseif point == "TOPLEFT" then offset = forYOffset and self:GetTopOffset() or self:GetLeftOffset()
+    elseif point == "TOPRIGHT" then offset = forYOffset and self:GetTopOffset() or self:GetRightOffset()
+    elseif point == "BOTTOMLEFT" then offset = forYOffset and self:GetBottomOffset() or self:GetLeftOffset()
+    elseif point == "BOTTOMRIGHT" then offset = forYOffset and self:GetBottomOffset() or self:GetRightOffset()
+    else
+        local selectionX, selectionY = self.Selection:GetCenter()
+        local centerX, centerY = self:GetCenter()
+        offset = forYOffset and selectionY - centerY or selectionX - centerX
+    end
+    return offset * self:GetScale()
+end
+function EditModeSystemMixin:GetCombinedSelectionOffset(info, forYOffset)
+    local offset = -self:GetSelectionOffset(info.point, forYOffset) + info.offset
+    if info.frame.Selection then
+        offset = offset + info.frame:GetSelectionOffset(info.relativePoint, forYOffset)
+    end
+    return offset / self:GetScale()
+end
+function EditModeSystemMixin:GetCombinedCenterOffset(frame)
+    local centerX, centerY = self:GetScaledCenter()
+    local targetX, targetY
+    if frame.GetScaledCenter then
+        targetX, targetY = frame:GetScaledCenter()
+    else
+        targetX, targetY = frame:GetCenter()
+    end
+    local scale = self:GetScale()
+    return (centerX - targetX) / scale, (centerY - targetY) / scale
+end
+function EditModeSystemMixin:GetSnapOffsets(info)
+    local offsetX, offsetY
+    if info.isCornerSnap then
+        offsetX = self:GetCombinedSelectionOffset(info, false)
+        offsetY = self:GetCombinedSelectionOffset(info, true)
+    else
+        offsetX, offsetY = self:GetCombinedCenterOffset(info.frame)
+        if info.isHorizontal then
+            offsetX = self:GetCombinedSelectionOffset(info, false)
+        else
+            offsetY = self:GetCombinedSelectionOffset(info, true)
+        end
+    end
+    return offsetX, offsetY
+end
+function EditModeSystemMixin:IsToTheLeftOfFrame(frame)
+    local _, right = self:GetScaledSelectionSides()
+    local left = frame:GetScaledSelectionSides()
+    return right < left
+end
+function EditModeSystemMixin:IsAboveFrame(frame)
+    local _, _, bottom = self:GetScaledSelectionSides()
+    local _, _, _, top = frame:GetScaledSelectionSides()
+    return bottom > top
+end
+
+MagnetismPreviewLineMixin = {}
+EditModeMagnetismManager = { magneticFrames = {} }
+_G._stubMagneticFrameInfos = nil
+_G._stubMagneticQueryCount = 0
+
+function EditModeMagnetismManager:GetMagneticFrameInfos(mover, ...)
+    AssertNoExtraArguments("GetMagneticFrameInfos", ...)
+    AssertType(mover, "table", "magnetic mover")
+    if type(mover.GetFrameMagneticEligibility) ~= "function" then
+        error("magnetic mover must expose candidate eligibility", 2)
+    end
+    _G._stubMagneticQueryCount = _G._stubMagneticQueryCount + 1
+    if not _G._stubMagneticFrameInfos then return nil end
+
+    -- Choice is controlled by the fixture. Only exercise the native contract's
+    -- candidate eligibility gate before delivering those predetermined results.
+    local accepted = {}
+    for _, info in ipairs(_G._stubMagneticFrameInfos) do
+        if info.frame == UIParent then
+            accepted[#accepted + 1] = info
+        else
+            local horizontal, vertical = mover:GetFrameMagneticEligibility(info.frame)
+            if (info.isCornerSnap and (horizontal or vertical))
+                or (info.isHorizontal and horizontal)
+                or (not info.isHorizontal and vertical) then
+                accepted[#accepted + 1] = info
+            end
+        end
+    end
+    if #accepted == 0 then return nil end
+    return accepted
+end
+
+function EditModeMagnetismManager:GetPreviewLineAnchors(info, ...)
+    AssertNoExtraArguments("GetPreviewLineAnchors", ...)
+    AssertType(info, "table", "magnetic frame info")
+    local relativePoint = info.relativePoint
+    AssertType(relativePoint, "string", "relative point")
+    if relativePoint:find("CENTER", 1, true) then
+        return { info.isHorizontal and "CenterVertical" or "CenterHorizontal" }
+    end
+    local anchors = {}
+    for _, item in ipairs({ { "TOP", "Top" }, { "BOTTOM", "Bottom" }, { "LEFT", "Left" }, { "RIGHT", "Right" } }) do
+        if relativePoint:find(item[1], 1, true) then anchors[#anchors + 1] = item[2] end
+    end
+    return anchors
+end
+
+function EditModeMagnetismManager:ApplyMagnetism()
+    error("native ApplyMagnetism would create a forbidden persistent anchor", 2)
+end
+function EditModeMagnetismManager:RegisterFrame()
+    error("the add-on must not register a native magnetic frame", 2)
+end
+function EditModeMagnetismManager:UnregisterFrame()
+    error("the add-on must not mutate native magnetic registration", 2)
+end
+
+function _G._RefreshStubMagnetismBounds()
+    local manager = EditModeMagnetismManager
+    local left, bottom, width, height = UIParent:GetRect()
+    manager.topLevelParentCenterX, manager.topLevelParentCenterY = UIParent:GetCenter()
+    manager.topLevelParentLeft = left
+    manager.topLevelParentRight = left + width
+    manager.topLevelParentBottom = bottom
+    manager.topLevelParentTop = bottom + height
+    manager.topLevelParentWidth = width
+    manager.topLevelParentHeight = height
+end
+
+function _G._CreateMagneticFrame(centerX, centerY, width, height, scale)
+    local frame = CreateFrame("Frame", nil, UIParent)
+    frame:SetSize(width, height)
+    frame:SetScale(scale or 1)
+    _G._SetFrameCenter(frame, centerX, centerY)
+    frame.Selection = CreateFrame("Frame", nil, frame)
+    frame.Selection:SetAllPoints(frame)
+    for key, method in pairs(EditModeSystemMixin) do frame[key] = method end
+    return frame
+end
+
+_G._stubDefaultEditModeManager = EditModeManagerFrame
+_G._stubDefaultMagnetismManager = EditModeMagnetismManager
+_G._stubDefaultEditModeSystemMixin = EditModeSystemMixin
+_G._stubDefaultPreviewLineMixin = MagnetismPreviewLineMixin
+_G._RefreshStubMagnetismBounds()
 
 _G._stubNow = 0
 _G._stubClassToken = "DRUID"
@@ -548,6 +819,10 @@ function EditBox_ClearHighlight(editBox)
 end
 
 function _G._ResetWowStubs()
+    EditModeManagerFrame = _G._stubDefaultEditModeManager
+    EditModeMagnetismManager = _G._stubDefaultMagnetismManager
+    EditModeSystemMixin = _G._stubDefaultEditModeSystemMixin
+    MagnetismPreviewLineMixin = _G._stubDefaultPreviewLineMixin
     _G._stubNow = 0
     _G._stubClassToken = "DRUID"
     _G._stubClassID = 11
@@ -561,8 +836,21 @@ function _G._ResetWowStubs()
     EditModeManagerFrame._editModeActive = false
     EditModeManagerFrame._selectionsShown = false
     EditModeManagerFrame._selectedSystem = nil
+    EditModeManagerFrame._snapEnabled = false
+    _G._stubMagneticFrameInfos = nil
+    _G._stubMagneticQueryCount = 0
     for _, frame in ipairs(_G._allFrames) do
         frame._moving = false
         frame._hasFocus = false
+        frame._forbidden = nil
+        frame._visibleOverride = nil
+        frame._invalidRect = nil
+        frame._rectOverride = nil
+        frame._scale = 1
+        frame._effectiveScale = nil
+        frame._pointHistory = {}
     end
+    UIParent:SetSize(1920, 1080)
+    _G._SetFrameCenter(UIParent, 960, 540)
+    _G._RefreshStubMagnetismBounds()
 end
