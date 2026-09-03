@@ -14,7 +14,7 @@ local ROW_HEIGHT = 32
 local ROW_GAP = 2
 local LABEL_WIDTH = 100
 local SLIDER_WIDTH = 200
-local INPUT_WIDTH = 64
+local INPUT_WIDTH = 48
 
 local stateChangedCallback
 local eventsRegistered = false
@@ -223,7 +223,7 @@ local function EnsurePanel()
     end
 
     local resetButton = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-    resetButton:SetSize(180, RESET_HEIGHT)
+    resetButton:SetSize(ROW_WIDTH, RESET_HEIGHT)
     resetButton:SetPoint("TOP", previousRow, "BOTTOM", 0, -RESET_GAP)
     resetButton:SetText("Reset to Defaults")
     resetButton:SetScript("OnClick", function()

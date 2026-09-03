@@ -382,6 +382,9 @@ describe("Edit Mode companion", function()
         local widthRow = state.rows.width
         local heightRow = state.rows.height
 
+        expect(widthRow.input:GetWidth()).to_equal(48)
+        expect(heightRow.input:GetWidth()).to_equal(48)
+
         widthRow.slider:SetValue(600)
         expect(IronfurTrackerDB.bar.width).to_equal(600)
         expect(widthRow.input:GetText()).to_equal("600")
@@ -470,6 +473,8 @@ describe("Edit Mode companion", function()
 
         local resetButton = FindButton("Reset to Defaults")
         expect(resetButton ~= nil).to_equal(true)
+        expect(resetButton:GetWidth()).to_equal(state.rows.width:GetWidth())
+        expect(resetButton:GetHeight()).to_equal(28)
         _G._RunFrameScript(resetButton, "OnClick")
 
         local _, _, _, offsetX, offsetY = bar:GetPoint()

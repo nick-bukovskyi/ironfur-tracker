@@ -14,6 +14,8 @@ All notable changes to Ironfur Tracker will be documented in this file.
 
 ### Changed
 
+- Edit Mode now uses a full-width Reset to Defaults button and more compact
+  number fields.
 - The live tracker now appears only while a Guardian Druid is in Bear Form.
 - Cat Form with Wildshape Mastery now keeps active Ironfur applications hidden
   until Bear Form is restored.
