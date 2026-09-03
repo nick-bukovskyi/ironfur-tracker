@@ -6,7 +6,7 @@ ns.EditMode = EditMode
 
 local PANEL_WIDTH = 430
 local PANEL_ROW_TOP = 45
-local PANEL_BOTTOM_PADDING = 12
+local PANEL_BOTTOM_PADDING = 25 -- Native dialog height padding minus its title's top inset
 local RESET_GAP = 8
 local RESET_HEIGHT = 28
 local ROW_WIDTH = 390

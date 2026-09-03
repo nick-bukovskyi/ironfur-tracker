@@ -6,6 +6,7 @@ All notable changes to Ironfur Tracker will be documented in this file.
 
 ### Fixed
 
+- The settings panel now leaves the native bottom gap below Reset to Defaults.
 - The settings panel now stays visible while dragging the bar in Edit Mode.
 
 ### Added

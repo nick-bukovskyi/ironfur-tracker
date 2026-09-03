@@ -826,6 +826,26 @@ describe("Edit Mode companion", function()
         expect(offsetY).to_equal(0)
     end)
 
+    it("keeps native bottom clearance below the final settings button", function()
+        Reset()
+        local state = OpenEditor()
+        local resetButton = FindButton("Reset to Defaults")
+        local control = resetButton
+        local buttonTop = 0
+        while control ~= state.panel do
+            local point, relativeTo, relativePoint, _, offsetY = control:GetPoint()
+            expect(point == "TOP" or point == "TOPLEFT").to_equal(true)
+            if relativePoint == "BOTTOM" or relativePoint == "BOTTOMLEFT" then
+                buttonTop = buttonTop + relativeTo:GetHeight()
+            else
+                expect(relativePoint).to_equal("TOPLEFT")
+            end
+            buttonTop = buttonTop - offsetY
+            control = relativeTo
+        end
+        expect(state.panel:GetHeight() - buttonTop - resetButton:GetHeight()).to_equal(25)
+    end)
+
     it("does not duplicate frames, callbacks, or hooks on repeated setup", function()
         Reset()
         local state = OpenEditor()
