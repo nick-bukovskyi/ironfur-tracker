@@ -6,6 +6,9 @@ All notable changes to Ironfur Tracker will be documented in this file.
 
 ### Fixed
 
+- Selecting Ironfur Tracker now closes an open EnhanceQoL Edit Mode settings
+  window instead of leaving the previous frame's controls alongside it.
+
 - Tick markers now span the bar's inner height regardless of border size, offset,
   or texture.
 - EnhanceQoL's Hide all windows toggle now also hides Ironfur Tracker's Edit Mode

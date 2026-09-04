@@ -4,6 +4,7 @@ local _, ns = ...
 local EditMode = {}
 ns.EditMode = EditMode
 
+local ENHANCE_EDIT_MODE_LIBRARY = "EnhanceQoLEditMode-1.0"
 local SUPPORTED_ENHANCE_EDIT_MODE_MINOR = 21000001
 local stateChangedCallback
 local eventsRegistered = false
@@ -144,6 +145,12 @@ function EditMode.Select()
         hookedManager:ClearSelectedSystem()
     end
 
+    -- EQoL closes its own dialog on native SelectSystem, not ClearSelectedSystem
+    local library = LibStub:GetLibrary(ENHANCE_EDIT_MODE_LIBRARY, true)
+    if library and type(library.HideSettingsDialog) == "function" then
+        library:HideSettingsDialog()
+    end
+
     selected = true
     selection:ShowSelected()
     ns.Settings.Show()
@@ -228,7 +235,7 @@ end
 
 function EditMode.TryAttachOverlayToggle()
     -- EQoL has no global-eye callback; keep its verified private state here
-    local library, minor = LibStub:GetLibrary("EnhanceQoLEditMode-1.0", true)
+    local library, minor = LibStub:GetLibrary(ENHANCE_EDIT_MODE_LIBRARY, true)
     if not library or minor ~= SUPPORTED_ENHANCE_EDIT_MODE_MINOR
         or type(library.RegisterCallback) ~= "function"
         or type(library.AddFrame) ~= "function" then

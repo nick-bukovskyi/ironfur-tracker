@@ -1,3 +1,26 @@
+# EnhanceQoL settings handoff validation
+
+- Scope: Selecting Ironfur closes the optional EnhanceQoL settings dialog, including repeated selections and recovery after combat.
+- Persistence: No saved-setting changes.
+- Contracts: Optional public HideSettingsDialog on the inspected EnhanceQoLEditMode provider; existing native selection boundary.
+- Target: Retail live 12.1.0.69587, interface 120100; TOC version 0.1.0 unchanged.
+- Source: Gethe/wow-ui-source live commit 8ea15b61e45c0ed4eba01439c90757f86eb78d34, version.txt 12.1.0.69587.
+- All 68 off-client tests pass from this complete commit snapshot; its Lua files parse successfully.
+- Tests load runtime files in TOC order with addon varargs and strict stubs. They do not establish client rendering or combat safety.
+
+| Context | Evidence |
+| --- | --- |
+| Fresh, migrated, malformed and reset settings as applicable | Covered by the corresponding off-client persistence and control regressions |
+| Editor selection, inputs, previews, repeat changes and recovery | Corresponding off-client interaction and lifecycle regressions pass |
+| Login/reload, native menus/pickers, UI scale, scrolling, combat/taint and restricted encounters | Unverified in Retail 12.1.0.69587; no live GetBuildInfo capture or client control was performed |
+| Live tracking, forms, talents, loading screens and restricted data | Existing regression coverage retained; actual gameplay contexts remain unverified |
+
+No installation, real SavedVariables changes, tags, pushes or publishing were performed. This snapshot is not a release-readiness claim.
+
+---
+
+The following baseline evidence is historical and predates this commit scope.
+
 # Appearance, Druid visibility, and Edit Mode highlight validation
 
 ## Current change and proof boundary

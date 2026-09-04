@@ -41,7 +41,8 @@ ticks. These samples do not create tracked applications.
   to choose snapping behavior. Alignment guides appear while dragging, and the
   bar snaps into place when released. Hiding the grid disables grid snapping
   without disabling snapping to eligible elements or screen guides.
-- Click the preview to open its settings panel.
+- Click the preview to open its settings panel. Any open EnhanceQoL Edit Mode
+  settings dialog closes when its public close control is available.
 - Use the eye beside Close to hide or show the preview's selection highlight.
   The bar and settings remain visible, and the bar can still be dragged.
   EnhanceQoL's **Hide all windows** eye also controls this highlight when its
