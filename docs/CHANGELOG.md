@@ -1,108 +1,85 @@
 # Changelog
 
-All notable changes to Ironfur Tracker will be documented in this file.
+Changes to Ironfur Tracker, newest first. The development milestones below
+record the work toward the first release; they were not separate public releases.
 
-## [Unreleased]
-
-### Fixed
-
-- The settings window now reserves space for its scrollbar with matching outer
-  margins. The scrollbar stays visible but inactive when everything fits.
-- The settings window now starts vertically centered and adjusts its height
-  when resolution or UI scale changes, keeping the controls within the screen.
-- Stack-color Add and Remove now act on the visible count, keeping the number
-  field, selector and preview synchronized. Removing a color selects the range
-  that inherits its count, such as 1-2 stacks after removing 2. Removing the first
-  rule selects the next one; an empty list shows No stack colors.
-- Selecting Ironfur Tracker now closes an open EnhanceQoL Edit Mode settings
-  window instead of leaving the previous frame's controls alongside it.
-- Tick markers now span the bar's inner height regardless of border size, offset,
-  or texture.
-- EnhanceQoL's Hide all windows toggle now also hides Ironfur Tracker's Edit Mode
-  highlight.
-- The settings panel now leaves the native bottom gap below Reset to Defaults.
-- The settings panel now stays visible while dragging the bar in Edit Mode.
+## [0.1.0] - Unreleased
 
 ### Added
 
-- Ironfur Tracker now has its own logo beside its name in the AddOns list.
-- Bar color can now follow time remaining: green above 50%, yellow above 25%
-  through 50%, and red at 25% or less. Customize each color and opacity while
-  keeping these thresholds fixed. Plain-language labels describe how much time
-  is left, and hovering a swatch shows its exact range.
-- Show ticks now controls marker visibility in the live bar and Edit Mode preview.
-  It is enabled by default; hiding markers keeps the fill and stack count updating.
-- The bar backdrop now has color, opacity and texture controls for the area
-  underneath the fill.
-- Stack text can now be hidden, aligned left/center/right, shifted horizontally or vertically,
-  and customized with color, opacity, font family, size, and shadow/outline styles.
-- Bar color can now use Blizzard's Druid class color or follow editable stack
-  ranges. Add or remove individual starting counts; skipped counts inherit the
-  previous color, and the highest range covers larger counts. Counts below the
-  first rule or an empty rule list use the saved Solid color.
-- Selecting a stack color previews that count on the bar; font selectors preview
-  each available family.
-- The settings panel now has an eye button to hide or show the bar's Edit Mode
-  highlight while keeping its preview and settings available.
-- Edit Mode settings now have Visibility, Font, Bar, Backdrop, Border and Tick sections.
-- Bar, tick, and border colors can now be customized, including opacity.
-- Tick width can now be changed with a slider or number input.
-- Bar and border texture selectors now show previews of built-in and available
-  shared-media textures.
-- Border size and offset can now be changed with sliders or number inputs.
-- The bar now stays visible with an empty fill and a count of zero in Bear Form
-  by default. Turn off Always show in Bear Form to hide it between applications.
-- Dragging the bar in Edit Mode now shows alignment guides and snaps to the
-  grid, screen guides, and eligible visible elements using Blizzard's snapping
-  controls. The bar stays in its placed position if another element moves later.
-- The bar can now be moved while Blizzard Edit Mode is open.
-- Edit Mode now offers linked slider and number controls for bar width and
-  height.
-- Bar size and position are now saved account-wide.
-- Reset to Defaults restores the original size, centered position, appearance,
-  and empty-bar visibility setting.
+- A time-based bar color mode: green with over half the duration left, yellow with a quarter to half left, and red with a quarter or less left.
+- Color and opacity choices for each of the three time ranges.
+- An Ironfur Tracker logo in the AddOns list.
 
 ### Changed
 
-- Font positioning now has Horizontal and Vertical controls. Existing horizontal
-  offsets are preserved; Vertical starts at zero.
-- New settings and Reset to Defaults use a black backdrop at 80% opacity, white
-  stack text, and a black border. Existing custom colors are preserved.
-- Texture selectors now use the explicit Solid name for Blizzard's built-in
-  solid texture. Older Default selections become Solid; custom selections stay intact.
-- Bar width and height controls now sit in the Bar section.
-- Stack-color starting counts now range from 1 to 20. Any rule can be removed,
-  including the first or last; upgrades retain in-range rules and discard rules
-  above 20. Empty saved lists remain empty until colors are added or reset.
-- Settings now put dimensions and placement before texture and color controls
-  within each section.
-- New settings use Druid class color, white ticks, and Friz Quadrata TT at size
-  14 with Drop shadow. Font and text-style selectors use explicit names.
-- Stack colors start red at 1, yellow at 2, green at 3, cyan at 4, and purple
-  at 5 or more. Existing customized colors and sizes are preserved on upgrade.
-- Click a compact bordered color swatch to pick a color.
-- Texture previews now appear only inside the opened selectors.
-- Edit Mode now uses a full-width Reset to Defaults button and more compact
-  number fields.
-- The live tracker now works for every Druid specialization while in Bear Form.
-- All Druids can customize the tracker in Edit Mode, with sample ticks showing
-  their selected appearance.
-- Cat Form with Wildshape Mastery now keeps active Ironfur applications hidden
-  until Bear Form is restored.
+- Time-based colors now change at 50% and 25%, with clearer labels explaining each range.
+
+### Fixed
+
+- The settings window now starts vertically centered and fits the available screen height.
+- The scrollbar now has its own space, so switching color modes keeps the settings aligned.
+- Settings remain within the screen when resolution or UI scale changes.
 
 ### Known Issues
 
-- The counter reflects locally tracked casts. Reloading while Ironfur is active
-  cannot restore applications cast before the reload; a zero count can appear
-  until another cast is observed.
+- Stacks already active when logging in, reloading the UI, or entering the world through a loading screen cannot be recovered. New casts are tracked immediately, but the display may temporarily show fewer stacks until the older applications expire.
 
-## [0.1.0] - 2026-09-03
+---
+
+## [0.1.0-dev.3] - Stack colors and text
 
 ### Added
 
-- Fixed centered Ironfur duration bar for Guardian Druids.
-- Independent moving tick for every successful Ironfur cast.
-- Centered active stack count and automatic visibility.
-- Ursoc's Endurance and Guardian of Elune duration handling.
-- Wildshape Mastery handling when Ironfur persists in Cat Form.
-- Automated tests for gating, duration, stacking, expiry, and lifecycle events.
+- Druid class color and customizable stack-count color modes.
+- Individual stack-color rules from 1 to 20, with skipped counts using the previous color.
+- Stack text controls for font, size, color, alignment, horizontal and vertical position, and shadow or outline.
+- Backdrop color and texture settings for the empty part of the bar.
+- A Show ticks option to hide the markers while keeping the fill and stack count visible.
+
+### Changed
+
+- New setups use Druid orange, white text and ticks, a black border, and a dark backdrop.
+- Settings are grouped into Visibility, Font, Bar, Backdrop, Border, and Tick.
+- Font and texture choices now use recognizable names and preview their appearance.
+
+### Fixed
+
+- Adding and removing stack colors now acts on the count shown in the input.
+- Removing a stack color automatically selects the range that takes its place.
+- Opening Ironfur Tracker settings now closes a previously open EnhanceQoL settings window.
+
+---
+
+## [0.1.0-dev.2] - Appearance and Edit Mode
+
+### Added
+
+- Drag-to-position controls, a sample bar, and size settings in Blizzard Edit Mode.
+- Snapping to the grid, screen guides, and nearby Edit Mode elements.
+- Bar, tick, and border color controls, including opacity.
+- Texture previews, border thickness and offset settings, and adjustable tick width.
+- Account-wide saved settings and a Reset to Defaults button.
+- An option to keep the empty bar visible in Bear Form, enabled by default.
+
+### Changed
+
+- The tracker now works for all Druid specializations while in Bear Form.
+- Color swatches open the color picker directly, and texture previews appear inside the selectors.
+
+### Fixed
+
+- Tick markers now fill the bar's inner height with different border styles.
+- EnhanceQoL's Hide all windows toggle now hides the tracker's Edit Mode highlight.
+- The settings panel stays open while dragging the bar.
+
+---
+
+## [0.1.0-dev.1] - First tracker
+
+### Added
+
+- An Ironfur duration bar with a stack count and an independent moving tick for each cast.
+- Automatic bar visibility in Bear Form.
+- Duration adjustments for Ursoc's Endurance and Guardian of Elune.
+- Continued tracking in Cat Form with Wildshape Mastery, with the bar hidden until returning to Bear Form.
