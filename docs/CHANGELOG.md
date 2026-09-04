@@ -8,7 +8,9 @@ All notable changes to Ironfur Tracker will be documented in this file.
 
 - The settings window now fits its controls with matching left and right margins.
 - Stack-color Add and Remove now act on the visible count, keeping the number
-  field, selector and preview synchronized without jumping after an action.
+  field, selector and preview synchronized. Removing a color selects the range
+  that inherits its count, such as 1-2 stacks after removing 2. Removing the first
+  rule selects the next one; an empty list shows No stack colors.
 - Selecting Ironfur Tracker now closes an open EnhanceQoL Edit Mode settings
   window instead of leaving the previous frame's controls alongside it.
 - Tick markers now span the bar's inner height regardless of border size, offset,

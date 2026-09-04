@@ -293,7 +293,9 @@ local function RefreshStackColors()
     local thresholds = ns.Config.GetStackThresholds()
     local exists = ns.Config.HasStackColor(selectedStack)
     local valid = ReadStackCount() == selectedStack
-    if not exists then
+    if #thresholds == 0 then
+        stackColors.dropdown:OverrideText("No stack colors")
+    elseif not exists then
         stackColors.dropdown:OverrideText(StackCountLabel(selectedStack, selectedStack + 1) .. " (inherited)")
     end
     for index, count in ipairs(thresholds) do
@@ -412,7 +414,12 @@ local function CreateStackColorRows()
         CloseTransientControls()
         ClearInputFocus(false)
         if ns.Config.RemoveStackColor(count) then
-            selectedStack = count
+            local thresholds = ns.Config.GetStackThresholds()
+            selectedStack = thresholds[1] or count
+            for _, threshold in ipairs(thresholds) do
+                if threshold > count then break end
+                selectedStack = threshold
+            end
             SyncStackInput()
             ApplySettingsChange()
         end

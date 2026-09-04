@@ -64,7 +64,10 @@ ticks. These samples do not create tracked applications.
   **Solid** (a customizable deeper orange), and **By stack count**.
 - In **By stack count**, choose a range or enter a **Stack count** from 1 to 20.
   The selector, number field and preview follow the same valid count. **Add** and
-  **Remove** act on that visible count and keep it selected afterward. For an
+  **Remove** act on that visible count. Adding keeps the new count selected;
+  removing selects the range that now covers it. For example, removing 2 selects
+  **1-2 stacks** when 1 and 3 remain. Removing the first rule selects the next
+  rule; removing the final rule shows **No stack colors** and lets you add again. For an
   existing color, Remove and the swatch are enabled; for a missing color, Add is
   enabled and the preview shows its inherited color until you add it. Invalid or
   blank input stays visible and disables both actions without changing colors.

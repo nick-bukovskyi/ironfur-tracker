@@ -1,11 +1,11 @@
-# Tick visibility and balanced settings margins validation
+# Selection after removing a stack-color range validation
 
-- Scope: Show ticks toggles marker visibility while timers, fill and count continue; equal 20-unit settings margins.
-- Persistence: Schema 9 adds showTicks with default true, preserving explicit false.
-- Contracts: SetShown on the ordinary tick layer; numeric row width and native scrollbar anchors.
+- Scope: Removal selects the newly covering range, the next available rule when needed, or No stack colors when empty.
+- Persistence: Schema 9 unchanged; only the requested rule is removed and other colors are preserved.
+- Contracts: Existing menu, number input, picker ownership and preview refresh; no game API changes.
 - Target: Retail live 12.1.0.69587, interface 120100; TOC version 0.1.0 unchanged.
 - Source: Gethe/wow-ui-source live commit 8ea15b61e45c0ed4eba01439c90757f86eb78d34, version.txt 12.1.0.69587.
-- All 94 off-client tests pass from this complete commit snapshot; its Lua files parse successfully.
+- All 95 off-client tests pass from this complete commit snapshot; its Lua files parse successfully.
 - Tests load runtime files in TOC order with addon varargs and strict stubs. They do not establish client rendering or combat safety.
 
 | Context | Evidence |
