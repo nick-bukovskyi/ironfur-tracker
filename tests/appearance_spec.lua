@@ -251,17 +251,57 @@ describe("Appearance control transactions", function()
         expect(ns.Core._GetUpdateDriver():IsShown()).to_equal(false)
     end)
 
-    it("fits an open settings panel when available screen height changes", function()
+    it("centers settings initially, fits viewport changes, and retains a dragged position when reopened", function()
         Reset()
         local state = OpenSettings()
+        local panel = state.panel
+        local point, relativeTo, relativePoint, x, y = panel:GetPoint()
+        expect(point).to_equal("RIGHT")
+        expect(relativeTo).to_equal(UIParent)
+        expect(relativePoint).to_equal("RIGHT")
+        expect(x).to_equal(-250)
+        expect(y).to_equal(0)
+        expect(panel._clampedToScreen).to_equal(true)
         local originalHeight = UIParent:GetHeight()
-        UIParent:SetHeight(400)
-        _G._FireEvent("DISPLAY_SIZE_CHANGED")
-        expect(state.panel:GetHeight()).to_equal(320)
-        expect(state.scrollFrame:GetVerticalScrollRange() > 0).to_equal(true)
+        for _, viewport in ipairs({ { 300, "DISPLAY_SIZE_CHANGED" }, { 1600, "UI_SCALE_CHANGED" } }) do
+            UIParent:SetHeight(viewport[1])
+            _G._FireEvent(viewport[2])
+            expect(panel:GetHeight() <= viewport[1] - 80).to_equal(true)
+            if viewport[1] == 300 then
+                expect(panel:GetHeight()).to_equal(220)
+                expect(state.scrollFrame:GetVerticalScrollRange() > 0).to_equal(true)
+            else
+                expect(state.scrollFrame:GetVerticalScrollRange()).to_equal(0)
+            end
+            local _, resetParent, _, resetX, resetY = state.resetButton:GetPoint()
+            expect(resetParent).to_equal(panel)
+            expect(-resetY + state.resetButton:GetHeight() + 25).to_equal(panel:GetHeight())
+            expect(resetX * 2 + state.resetButton:GetWidth()).to_equal(panel:GetWidth())
+        end
+        _G._RunFrameScript(panel, "OnDragStart")
+        expect(panel._moving).to_equal(true)
+        -- Supply the native drag's final anchor without emulating screen geometry
+        panel:ClearAllPoints()
+        panel:SetPoint("CENTER", UIParent, "CENTER", -120, 40)
+        _G._RunFrameScript(panel, "OnDragStop")
+        local frameCount = #_G._allFrames
+        for _ = 1, 3 do
+            ns.Settings.Refresh()
+            ns.Settings.Hide()
+            UIParent:SetHeight(400)
+            _G._FireEvent("DISPLAY_SIZE_CHANGED")
+            expect(panel:IsShown()).to_equal(false)
+            expect(OpenSettings().panel).to_equal(panel)
+            expect(panel:GetHeight()).to_equal(320)
+            expect(panel:GetPoint()).to_equal("CENTER")
+            expect(select(4, panel:GetPoint())).to_equal(-120)
+            expect(select(5, panel:GetPoint())).to_equal(40)
+        end
+        expect(#_G._allFrames).to_equal(frameCount)
+        panel:ClearAllPoints()
+        panel:SetPoint(point, relativeTo, relativePoint, x, y)
         UIParent:SetHeight(originalHeight)
         _G._FireEvent("UI_SCALE_CHANGED")
-        expect(state.panel:GetHeight() > 320).to_equal(true)
         EditModeManagerFrame:ExitEditMode()
     end)
 

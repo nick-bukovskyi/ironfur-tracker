@@ -193,7 +193,7 @@ describe("Backdrop appearance", function()
         EditModeManagerFrame:ExitEditMode()
     end)
 
-    it("keeps balanced numeric-control margins and accessible scrolling across color modes", function()
+    it("reserves scrollbar space and preserves its native state through content range changes", function()
         Reset()
         local state = OpenSettings()
         local scrollbar
@@ -201,11 +201,19 @@ describe("Backdrop appearance", function()
             if frame._template == "MinimalScrollBar" and frame:GetParent() == state.panel then scrollbar = frame end
         end
         expect(scrollbar).to_be_truthy()
-        UIParent:SetHeight(360)
+        UIParent:SetHeight(1600)
         _G._FireEvent("DISPLAY_SIZE_CHANGED")
-        for _, choice in ipairs(ns.Config.GetChoiceOptions("barColorMode")) do
-            _G._SelectDropdown(state.choices.barColorMode.dropdown, choice.label)
+        UIParent:SetHeight(state.panel:GetHeight() + 80)
+        _G._FireEvent("UI_SCALE_CHANGED")
+        for _, mode in ipairs({ "Class color", "By stack count", "Solid", "Class color" }) do
+            _G._SelectDropdown(state.choices.barColorMode.dropdown, mode)
+            local range = state.scrollFrame:GetVerticalScrollRange()
+            -- Native layout delivers this callback after the content or viewport changes
+            _G._RunFrameScript(state.scrollFrame, "OnScrollRangeChanged", 0, range)
+            expect(state.panel:GetWidth()).to_equal(428)
+            expect(state.scrollFrame:GetWidth()).to_equal(363)
             local leftMargin = select(4, state.scrollFrame:GetPoint())
+            expect(leftMargin).to_equal(20)
             for _, row in pairs(state.rows) do
                 local _, sliderAnchor, sliderRelativePoint, sliderGap = row.slider:GetPoint()
                 local _, inputAnchor, inputRelativePoint, inputGap = row.input:GetPoint()
@@ -215,14 +223,27 @@ describe("Backdrop appearance", function()
                 expect(inputRelativePoint).to_equal("RIGHT")
                 local edge = select(4, row:GetPoint()) + select(4, row.label:GetPoint()) + row.label._width
                     + sliderGap + row.slider:GetWidth() + inputGap + row.input:GetWidth()
-                expect(state.panel:GetWidth() - leftMargin - edge).to_equal(leftMargin)
+                expect(edge).to_equal(state.scrollFrame:GetWidth())
             end
-            expect(state.scrollFrame:GetVerticalScrollRange() > 0).to_equal(true)
             expect(scrollbar:IsShown()).to_equal(true)
             local _, scrollAnchor, scrollRelativePoint, scrollOffset = scrollbar:GetPoint()
             expect(scrollAnchor).to_equal(state.scrollFrame)
             expect(scrollRelativePoint).to_equal("TOPRIGHT")
-            expect(scrollOffset > 0 and scrollOffset < leftMargin).to_equal(true)
+            expect(scrollOffset - 17 / 2).to_equal(8)
+            local arrowRight = leftMargin + state.scrollFrame:GetWidth() + scrollOffset + 17 / 2
+            expect(state.panel:GetWidth() - arrowRight).to_equal(20)
+            if mode == "Class color" then
+                expect(range).to_equal(0)
+                expect(state.scrollFrame:GetVerticalScroll()).to_equal(0)
+                expect(scrollbar._visibleExtentPercentage).to_equal(1)
+                expect(scrollbar._scrollPercentage).to_equal(0)
+            else
+                expect(range > 0).to_equal(true)
+                expect(scrollbar._visibleExtentPercentage < 1).to_equal(true)
+                expect(state.scrollFrame:GetVerticalScroll() <= range).to_equal(true)
+                state.scrollFrame:SetVerticalScroll(range)
+                expect(scrollbar._scrollPercentage).to_equal(1)
+            end
         end
         local removeButton = state.stackColors.removeButton
         local rightAnchorFound = false

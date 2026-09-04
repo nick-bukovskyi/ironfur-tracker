@@ -8,7 +8,8 @@ local LABEL_WIDTH, SLIDER_WIDTH, INPUT_WIDTH = 100, 200, 48
 local CONTROL_GAP, INPUT_GAP = 5, 10
 local ROW_WIDTH = LABEL_WIDTH + CONTROL_GAP + SLIDER_WIDTH + INPUT_GAP + INPUT_WIDTH
 local PANEL_PADDING, ROW_HEIGHT = 20, 32
-local PANEL_WIDTH = ROW_WIDTH + PANEL_PADDING * 2
+local SCROLLBAR_GAP, SCROLLBAR_ARROW_WIDTH = 8, 17
+local PANEL_WIDTH = ROW_WIDTH + SCROLLBAR_GAP + SCROLLBAR_ARROW_WIDTH + PANEL_PADDING * 2
 local PANEL_TOP, PANEL_BOTTOM, RESET_HEIGHT = 45, 25, 28
 local panel, scrollFrame, scrollBar, content, resetButton, alwaysVisible, eyeButton
 local onStateChanged, onClose, isCombatLocked
@@ -552,19 +553,18 @@ end
 
 local function UpdatePanelSize()
     local desiredHeight = content:GetHeight() + PANEL_TOP + PANEL_BOTTOM + RESET_HEIGHT + 12
-    local height = math.min(desiredHeight, math.max(240, UIParent:GetHeight() - 80))
+    local height = math.min(desiredHeight, UIParent:GetHeight() - 80)
     panel:SetHeight(height)
     scrollFrame:SetSize(ROW_WIDTH, height - PANEL_TOP - PANEL_BOTTOM - RESET_HEIGHT - 12)
     resetButton:ClearAllPoints()
     resetButton:SetPoint("TOPLEFT", panel, "TOPLEFT", PANEL_PADDING, -(height - PANEL_BOTTOM - RESET_HEIGHT))
-    scrollBar:SetShown(scrollFrame:GetVerticalScrollRange() > 0)
 end
 
 local function EnsurePanel()
     if panel then return end
     panel = CreateFrame("Frame", nil, UIParent)
     panel:SetWidth(PANEL_WIDTH)
-    panel:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -250, 200)
+    panel:SetPoint("RIGHT", UIParent, "RIGHT", -250, 0)
     panel:SetFrameStrata("DIALOG")
     panel:SetFrameLevel(200)
     panel:SetMovable(true)
@@ -607,11 +607,11 @@ local function EnsurePanel()
     scrollFrame:SetPoint("TOPLEFT", panel, "TOPLEFT", PANEL_PADDING, -PANEL_TOP)
     scrollFrame:EnableMouseWheel(true)
     scrollBar = CreateFrame("EventFrame", nil, panel, "MinimalScrollBar")
-    scrollBar:SetPoint("TOP", scrollFrame, "TOPRIGHT", PANEL_PADDING / 2, 0)
-    scrollBar:SetPoint("BOTTOM", scrollFrame, "BOTTOMRIGHT", PANEL_PADDING / 2, 0)
+    local scrollOffset = SCROLLBAR_GAP + SCROLLBAR_ARROW_WIDTH / 2
+    scrollBar:SetPoint("TOP", scrollFrame, "TOPRIGHT", scrollOffset, 0)
+    scrollBar:SetPoint("BOTTOM", scrollFrame, "BOTTOMRIGHT", scrollOffset, 0)
     ScrollUtil.InitScrollFrameWithScrollBar(scrollFrame, scrollBar)
     scrollFrame:HookScript("OnScrollRangeChanged", function(frame, _, range)
-        scrollBar:SetShown(range > 0)
         if frame:GetVerticalScroll() > range then frame:SetVerticalScroll(range) end
     end)
     content = CreateFrame("Frame", nil, scrollFrame)
@@ -620,7 +620,7 @@ local function EnsurePanel()
     BuildControls()
 
     resetButton = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-    resetButton:SetSize(ROW_WIDTH, RESET_HEIGHT)
+    resetButton:SetSize(PANEL_WIDTH - PANEL_PADDING * 2, RESET_HEIGHT)
     resetButton:SetText("Reset to Defaults")
     resetButton:SetScript("OnClick", function()
         if not CanEdit() then return end

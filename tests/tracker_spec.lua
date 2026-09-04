@@ -908,7 +908,7 @@ describe("Edit Mode companion", function()
 
         local resetButton = FindButton("Reset to Defaults")
         expect(resetButton ~= nil).to_equal(true)
-        expect(resetButton:GetWidth()).to_equal(state.rows.width:GetWidth())
+        expect(resetButton:GetWidth()).to_equal(state.panel:GetWidth() - 40)
         expect(resetButton:GetHeight()).to_equal(28)
         _G._RunFrameScript(resetButton, "OnClick")
 

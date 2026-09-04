@@ -6,7 +6,10 @@ All notable changes to Ironfur Tracker will be documented in this file.
 
 ### Fixed
 
-- The settings window now fits its controls with matching left and right margins.
+- The settings window now reserves space for its scrollbar with matching outer
+  margins. The scrollbar stays visible but inactive when everything fits.
+- The settings window now starts vertically centered and adjusts its height
+  when resolution or UI scale changes, keeping the controls within the screen.
 - Stack-color Add and Remove now act on the visible count, keeping the number
   field, selector and preview synchronized. Removing a color selects the range
   that inherits its count, such as 1-2 stacks after removing 2. Removing the first

@@ -104,9 +104,11 @@ Width accepts whole numbers from 80 to 1000. Height accepts whole numbers from
 8 to 128. These account-wide choices are owned by Ironfur Tracker and are not
 part of Blizzard Edit Mode layout profiles, imports, exports, Save, or Revert.
 Color pickers and texture menus close when editing ends or combat starts.
-The settings content scrolls when the available screen height requires it.
-The window fits the slider-and-input rows with equal side margins; scrolling
-uses the existing right margin.
+The settings window starts vertically centered and fits the available screen
+height, updating when resolution or UI scale changes. It remains draggable and
+clamped to the screen. The scrollbar has its own column with matching outer
+margins and stays visible but inactive when all settings fit, so changing color
+modes never shifts the controls horizontally or changes the window width.
 Text size accepts 8-64 UI units; both font offsets accept whole numbers from -500 to 500.
 
 Snapping sets the bar's position; it does not attach the bar to another element.

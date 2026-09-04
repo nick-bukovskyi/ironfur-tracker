@@ -879,11 +879,13 @@ function ScrollUtil.InitScrollFrameWithScrollBar(scrollFrame, scrollBar, ...)
     end
     scrollFrame._scrollBar = scrollBar
     scrollFrame.panExtent = 30
-    scrollFrame:SetScript("OnVerticalScroll", function(frame, offset)
+    local function OnVerticalScroll(frame, offset)
         local range = frame:GetVerticalScrollRange()
         scrollBar._scrollPercentage = range > 0 and offset / range or 0
-    end)
+    end
+    scrollFrame:SetScript("OnVerticalScroll", OnVerticalScroll)
     scrollFrame:SetScript("OnScrollRangeChanged", function(frame, _, range)
+        OnVerticalScroll(frame, frame:GetVerticalScroll())
         local height = frame:GetHeight()
         scrollBar._visibleExtentPercentage = height > 0 and height / (range + height) or 0
     end)
