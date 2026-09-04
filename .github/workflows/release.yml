@@ -1,10 +1,16 @@
 name: Release
-run-name: Release ${{ github.ref_name }}
+run-name: Release ${{ inputs.tag || github.ref_name }}
 
 on:
   push:
     tags:
       - '**'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to publish
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -12,10 +18,13 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Validate release
         shell: bash
@@ -25,8 +34,12 @@ jobs:
           set -euo pipefail
           version=$(sed -n 's/^## Version: //p' IronfurTracker.toc | tr -d '\r')
           project=$(sed -n 's/^## X-Curse-Project-ID: //p' IronfurTracker.toc | tr -d '\r')
-          if [[ "$GITHUB_REF_NAME" != "$version" ]]; then
+          if [[ "$RELEASE_TAG" != "$version" ]]; then
             echo '::error::Release tag must match the TOC version exactly'
+            exit 1
+          fi
+          if [[ "$(git rev-list -n 1 "refs/tags/$RELEASE_TAG")" != "$(git rev-parse HEAD)" ]]; then
+            echo '::error::Checkout must match the existing release tag'
             exit 1
           fi
           if [[ ! "$project" =~ ^[0-9]+$ ]]; then
