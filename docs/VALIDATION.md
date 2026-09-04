@@ -1,11 +1,11 @@
-# Backdrop customization and section order validation
+# Explicit Solid textures and appearance defaults validation
 
-- Scope: Backdrop color, opacity and texture; Visibility, Font, Bar, Backdrop, Border, Tick section order.
-- Persistence: Schema 7 adds independent backdrop choices while preserving existing settings.
-- Contracts: Existing full-size BACKGROUND texture, SetTexture and SetVertexColor; shared statusbar media discovery.
+- Scope: Single Solid texture choice in each texture menu; black backdrop at 80% alpha, white text and black border defaults.
+- Persistence: Schema 8 migrates Default texture aliases to Solid without replacing custom colors or media.
+- Contracts: Existing WHITE8X8 asset and media resolution; no new game APIs or events.
 - Target: Retail live 12.1.0.69587, interface 120100; TOC version 0.1.0 unchanged.
 - Source: Gethe/wow-ui-source live commit 8ea15b61e45c0ed4eba01439c90757f86eb78d34, version.txt 12.1.0.69587.
-- All 88 off-client tests pass from this complete commit snapshot; its Lua files parse successfully.
+- All 90 off-client tests pass from this complete commit snapshot; its Lua files parse successfully.
 - Tests load runtime files in TOC order with addon varargs and strict stubs. They do not establish client rendering or combat safety.
 
 | Context | Evidence |

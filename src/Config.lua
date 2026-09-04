@@ -4,7 +4,7 @@ local _, ns = ...
 local Config = {}
 ns.Config = Config
 
-local CURRENT_SCHEMA_VERSION = 7
+local CURRENT_SCHEMA_VERSION = 8
 local MAXIMUM_STACK_COLORS = 20
 local DEFAULT_FONT_FAMILY = "Friz Quadrata TT"
 local DEFAULT_STACK_COLORS = {
@@ -83,14 +83,14 @@ local NUMERIC_DEFINITIONS = {
 
 local DEFAULT_COLORS = {
     barColor = { r = 0.91, g = 0.38, b = 0.08, a = 0.92 },
-    backdropColor = { r = 0.055, g = 0.065, b = 0.08, a = 0.92 },
+    backdropColor = { r = 0, g = 0, b = 0, a = 0.8 },
     tickColor = { r = 1, g = 1, b = 1, a = 1 },
-    textColor = { r = 1, g = 0.96, b = 0.86, a = 1 },
-    borderColor = { r = 0.01, g = 0.01, b = 0.015, a = 1 },
+    textColor = { r = 1, g = 1, b = 1, a = 1 },
+    borderColor = { r = 0, g = 0, b = 0, a = 1 },
 }
 local COLOR_CHANNELS = { "r", "g", "b", "a" }
 local TEXTURE_KEYS = { barTexture = true, backdropTexture = true, borderTexture = true }
-local DEFAULT_TEXTURE = "Default"
+local DEFAULT_TEXTURE = "Solid"
 local CHOICES = {
     barColorMode = {
         { value = "CLASS", label = "Class color" },
@@ -179,7 +179,7 @@ local function NormalizeAppearance(bar, reset, legacyDense)
         bar[key] = NormalizeColor(color, defaults)
     end
     for key in pairs(TEXTURE_KEYS) do
-        if reset or not IsMediaName(bar[key]) then
+        if reset or not IsMediaName(bar[key]) or bar[key] == "Default" then
             bar[key] = DEFAULT_TEXTURE
         end
     end
@@ -278,11 +278,15 @@ function Config.GetTexture(key)
 end
 
 function Config.SetTexture(key, name)
-    if not database or not TEXTURE_KEYS[key] or not IsMediaName(name) then
+    if not database or not TEXTURE_KEYS[key] or not IsMediaName(name) or name == "Default" then
         return false
     end
     database.bar[key] = name
     return true
+end
+
+function Config.GetDefaultTexture()
+    return DEFAULT_TEXTURE
 end
 
 function Config.GetAlwaysVisible()

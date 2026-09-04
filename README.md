@@ -50,12 +50,12 @@ ticks. These samples do not create tracked applications.
 - Click a bordered color swatch to choose bar, backdrop, tick, or border color with opacity.
   Changes preview immediately; canceling the picker restores the opening color.
 - Open the bar, backdrop or border texture selector to see named visual previews.
-  **Default** retains the original solid appearance; other choices come from built-in shared media
-  or enabled media-provider addons. Missing media temporarily uses Default
+  **Solid** uses Blizzard's built-in solid texture; other choices come from built-in shared media
+  or enabled media-provider addons. Missing media temporarily uses Solid
   without erasing the saved selection.
 - Use **Backdrop** to customize the color, opacity and texture underneath the
   fill. It shows through the unfilled part of the bar and remains visible when
-  the bar is empty. Its default dark, solid appearance is unchanged.
+  the bar is empty. New settings use black (#000000) at 80% opacity with Solid texture.
 - Use the Tick section to set marker color and width from 1 to 20 with the slider
   or number field. Ticks keep their full inner height regardless of border styling.
 - **Color mode** offers **Class color** (the default Blizzard Druid orange),
@@ -82,15 +82,16 @@ ticks. These samples do not create tracked applications.
   and adjust its horizontal offset. Positive offsets move right; negative offsets
   move left. Choose text color/opacity, a font family, size, and shadow/outline style.
   Font names preview their appearance inside the **Font** selector. New settings
-  use **Friz Quadrata TT**, size **14**, and **Drop shadow**. Unavailable fonts use
+  use white text, **Friz Quadrata TT**, size **14**, and **Drop shadow**. Unavailable fonts use
   Friz Quadrata TT, or the locale's native font if unavailable, until their provider
   returns. Hiding the number does not change stack colors.
 - Use **Reset to Defaults** to restore a 300 by 18 bar at screen center, the
-  class-colored fill, solid textures, white ticks at width 2, border size 1,
-  offset 0, and enabled empty-bar visibility. Text returns to Friz Quadrata TT,
+  class-colored fill, Solid textures, white ticks at width 2, black border at size 1,
+  offset 0, and enabled empty-bar visibility. Text returns to white Friz Quadrata TT,
   size 14, Drop shadow, centered with no offset, and visible. The backdrop
-  returns to its original dark color and solid texture. Existing custom choices survive upgrades;
+  returns to black at 80% opacity with Solid texture. Existing custom choices survive upgrades;
   resetting applies all the new defaults together.
+  Older texture selections named Default become Solid without changing their appearance.
 
 Width accepts whole numbers from 80 to 1000. Height accepts whole numbers from
 8 to 128. These account-wide choices are owned by Ironfur Tracker and are not

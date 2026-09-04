@@ -34,7 +34,7 @@ local function IsMediaPath(mediaType, path)
 end
 
 function Media.Resolve(mediaType, name)
-    if name ~= "Default" then
+    if name ~= "Default" and (mediaType == "font" or name ~= ns.Config.GetDefaultTexture()) then
         local catalog = sharedMedia:HashTable(mediaType)
         local path = catalog and catalog[name]
         if IsMediaPath(mediaType, path) then
@@ -48,7 +48,9 @@ function Media.GetOptions(mediaType)
     local options = {}
     local catalog = sharedMedia:HashTable(mediaType)
     for name, path in pairs(catalog or {}) do
-        if type(name) == "string" and name ~= "" and name ~= "Default" and IsMediaPath(mediaType, path) then
+        if type(name) == "string" and name ~= "" and name ~= "Default"
+            and (mediaType == "font" or name ~= ns.Config.GetDefaultTexture())
+            and IsMediaPath(mediaType, path) then
             options[#options + 1] = { name = name, path = path }
         end
     end
@@ -60,7 +62,7 @@ function Media.GetOptions(mediaType)
         return leftName < rightName
     end)
     if mediaType ~= "font" then
-        table.insert(options, 1, { name = "Default", path = DefaultPath(mediaType) })
+        table.insert(options, 1, { name = ns.Config.GetDefaultTexture(), path = DefaultPath(mediaType) })
     end
     return options
 end

@@ -1,7 +1,7 @@
 local ns = _G._test_ns
 local bar = ns.Bar.GetFrame()
 local sharedMedia = LibStub("LibSharedMedia-3.0")
-local DEFAULT_COLOR = { 0.055, 0.065, 0.08, 0.92 }
+local DEFAULT_COLOR = { 0, 0, 0, 0.8 }
 
 local function Reset()
     _G._ResetWowStubs()
@@ -38,8 +38,8 @@ describe("Backdrop appearance", function()
             tickColor = { r = 0.2, g = 0.3, b = 0.4, a = 0.5 },
         } }
         ns.Config.Initialize(saved)
-        expect(saved.schemaVersion).to_equal(7)
-        expect(ns.Config.GetTexture("backdropTexture")).to_equal("Default")
+        expect(saved.schemaVersion).to_equal(8)
+        expect(ns.Config.GetTexture("backdropTexture")).to_equal("Solid")
         ExpectColor({ ns.Config.GetColor("backdropColor") }, DEFAULT_COLOR)
         expect(ns.Config.GetNumber("width")).to_equal(410)
         expect(ns.Config.GetNumber("fontSize")).to_equal(19)
@@ -48,11 +48,11 @@ describe("Backdrop appearance", function()
         saved.bar.backdropColor = { r = 0.2, g = math.huge, b = 0.4, a = "invalid" }
         ns.Config.Initialize(saved)
         expect(ns.Config.GetTexture("backdropTexture")).to_equal("Saved unavailable backdrop")
-        ExpectColor({ ns.Config.GetColor("backdropColor") }, { 0.2, 0.065, 0.4, 0.92 })
+        ExpectColor({ ns.Config.GetColor("backdropColor") }, { 0.2, 0, 0.4, 0.8 })
         ExpectColor({ ns.Config.GetColor("tickColor") }, { 0.2, 0.3, 0.4, 0.5 })
         saved.bar.backdropTexture = "invalid\nname"
         ns.Config.Initialize(saved)
-        expect(ns.Config.GetTexture("backdropTexture")).to_equal("Default")
+        expect(ns.Config.GetTexture("backdropTexture")).to_equal("Solid")
         expect(ns.Config.GetTexture("barTexture")).to_equal("Blizzard")
         Reset()
     end)
@@ -126,8 +126,8 @@ describe("Backdrop appearance", function()
         stale = ColorPickerFrame.swatchFunc
         Click(state.resetButton)
         stale()
-        expect(ns.Config.GetTexture("backdropTexture")).to_equal("Default")
-        expect(backdrop._texture).to_equal(ns.Media.Resolve("statusbar", "Default"))
+        expect(ns.Config.GetTexture("backdropTexture")).to_equal("Solid")
+        expect(backdrop._texture).to_equal(ns.Media.Resolve("statusbar", "Solid"))
         ExpectColor(backdrop._vertexColor, DEFAULT_COLOR)
         ExpectColor({ ns.Config.GetColor("backdropColor") }, DEFAULT_COLOR)
         EditModeManagerFrame:ExitEditMode()
@@ -142,13 +142,13 @@ describe("Backdrop appearance", function()
         local backdrop = Backdrop()
         local fillPath = bar._statusBarTexture
         local dropdown = state.textures.backdropTexture.dropdown
-        expect(backdrop._texture).to_equal(ns.Media.Resolve("statusbar", "Default"))
+        expect(backdrop._texture).to_equal(ns.Media.Resolve("statusbar", "Solid"))
         expect(dropdown:GetText()).to_equal(name)
         _G._stubKnownFileAssets[path] = true
         expect(sharedMedia:Register("statusbar", name, path)).to_equal(true)
         expect(backdrop._texture).to_equal(path)
         expect(bar._statusBarTexture).to_equal(fillPath)
-        expect(ns.Config.GetTexture("barTexture")).to_equal("Default")
+        expect(ns.Config.GetTexture("barTexture")).to_equal("Solid")
         expect(ns.Config.GetTexture("backdropTexture")).to_equal(name)
         local menu = _G._OpenDropdown(dropdown)
         for index, entry in ipairs(menu.entries) do

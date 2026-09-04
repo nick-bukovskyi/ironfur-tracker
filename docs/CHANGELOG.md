@@ -20,7 +20,7 @@ All notable changes to Ironfur Tracker will be documented in this file.
 ### Added
 
 - The bar backdrop now has color, opacity and texture controls for the area
-  underneath the fill, preserving its original appearance by default.
+  underneath the fill.
 - Stack text can now be hidden, aligned left/center/right, shifted horizontally,
   and customized with color, opacity, font family, size, and shadow/outline styles.
 - Bar color can now use Blizzard's Druid class color or follow editable stack
@@ -34,7 +34,7 @@ All notable changes to Ironfur Tracker will be documented in this file.
 - Edit Mode settings now have Visibility, Font, Bar, Backdrop, Border and Tick sections.
 - Bar, tick, and border colors can now be customized, including opacity.
 - Tick width can now be changed with a slider or number input.
-- Bar and border texture selectors now show previews of default and available
+- Bar and border texture selectors now show previews of built-in and available
   shared-media textures.
 - Border size and offset can now be changed with sliders or number inputs.
 - The bar now stays visible with an empty fill and a count of zero in Bear Form
@@ -51,6 +51,10 @@ All notable changes to Ironfur Tracker will be documented in this file.
 
 ### Changed
 
+- New settings and Reset to Defaults use a black backdrop at 80% opacity, white
+  stack text, and a black border. Existing custom colors are preserved.
+- Texture selectors now use the explicit Solid name for Blizzard's built-in
+  solid texture. Older Default selections become Solid; custom selections stay intact.
 - Bar width and height controls now sit in the Bar section.
 - Stack-color starting counts now range from 1 to 20. Any rule can be removed,
   including the first or last; upgrades retain in-range rules and discard rules

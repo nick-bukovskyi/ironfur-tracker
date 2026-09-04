@@ -24,7 +24,12 @@ before LibSharedMedia; all three load before `src/Media.lua`.
 
 ## Integration
 
-`statusbar`, `border`, and `font` media are offered. Texture menus retain a `Default` option for the original solid texture. Font menus contain named families only,
+`statusbar`, `border`, and `font` media are offered. Every texture menu has one
+explicit `Solid` option using Blizzard's `Interface\Buttons\WHITE8X8` asset,
+also catalogued by bundled LSM as statusbar/background Solid. The addon reserves
+that texture name so provider registrations cannot replace its built-in asset;
+neither duplicate Solid entries nor Default entries appear. Legacy saved Default
+selections migrate to Solid. Font menus contain named families only,
 with Friz Quadrata TT selected for new settings. Selections store their
 registered media name and resolve through the corresponding shared catalog.
 An unavailable name falls back to the relevant default without replacing the saved choice.

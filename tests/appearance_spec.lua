@@ -44,6 +44,78 @@ local function FindBorder()
 end
 
 describe("Appearance persistence and media recovery", function()
+    it("migrates texture aliases while preserving colors and custom media, and applies new colors only on reset", function()
+        local saved = { schemaVersion = 7, bar = {
+            barTexture = "Default", backdropTexture = "Default", borderTexture = "Default",
+            backdropColor = { r = 0.055, g = 0.065, b = 0.08, a = 0.92 },
+            textColor = { r = 1, g = 0.96, b = 0.86, a = 1 },
+            borderColor = { r = 0.01, g = 0.01, b = 0.015, a = 1 },
+        } }
+        ns.Config.Initialize(saved)
+        expect(saved.schemaVersion).to_equal(8)
+        for _, key in ipairs({ "barTexture", "backdropTexture", "borderTexture" }) do
+            expect(ns.Config.GetTexture(key)).to_equal("Solid")
+            expect(ns.Config.SetTexture(key, "Default")).to_equal(false)
+            expect(ns.Config.GetTexture(key)).to_equal("Solid")
+        end
+        ExpectColor("backdropColor", 0.055, 0.065, 0.08, 0.92)
+        ExpectColor("textColor", 1, 0.96, 0.86, 1)
+        ExpectColor("borderColor", 0.01, 0.01, 0.015, 1)
+        saved.bar.barTexture = "Blizzard"
+        saved.bar.backdropTexture = "Unavailable custom backdrop"
+        saved.bar.borderTexture = "Blizzard Tooltip"
+        ns.Config.Initialize(saved)
+        expect(ns.Config.GetTexture("barTexture")).to_equal("Blizzard")
+        expect(ns.Config.GetTexture("backdropTexture")).to_equal("Unavailable custom backdrop")
+        expect(ns.Config.GetTexture("borderTexture")).to_equal("Blizzard Tooltip")
+        ExpectColor("backdropColor", 0.055, 0.065, 0.08, 0.92)
+        ExpectColor("textColor", 1, 0.96, 0.86, 1)
+        ExpectColor("borderColor", 0.01, 0.01, 0.015, 1)
+        Reset()
+        ExpectColor("backdropColor", 0, 0, 0, 0.8)
+        ExpectColor("textColor", 1, 1, 1, 1)
+        ExpectColor("borderColor", 0, 0, 0, 1)
+    end)
+
+    it("offers one built-in Solid texture in every texture menu despite reserved provider names", function()
+        Reset()
+        local foreignPath = "Interface\\AddOns\\TestMedia\\foreign-solid.tga"
+        _G._stubKnownFileAssets[foreignPath] = true
+        -- Statusbar Solid is already registered by the real bundled library
+        expect(sharedMedia:Register("statusbar", "Solid", foreignPath)).to_equal(false)
+        expect(sharedMedia:Register("border", "Solid", foreignPath)).to_equal(true)
+        expect(sharedMedia:Register("statusbar", "Default", foreignPath)).to_equal(true)
+        expect(sharedMedia:Register("border", "Default", foreignPath)).to_equal(true)
+        local state = OpenSettings()
+        local builtIn = "Interface\\Buttons\\WHITE8X8"
+        for _, entry in ipairs({ { "barTexture", "statusbar" }, { "backdropTexture", "statusbar" },
+            { "borderTexture", "border" } }) do
+            local key, mediaType = entry[1], entry[2]
+            local dropdown = state.textures[key].dropdown
+            local menu = _G._OpenDropdown(dropdown)
+            local solidCount = 0
+            expect(menu.entries[1].text).to_equal("Solid")
+            for _, item in ipairs(menu.entries) do
+                expect(item.text == "Default").to_equal(false)
+                if item.text == "Solid" then solidCount = solidCount + 1 end
+            end
+            expect(solidCount).to_equal(1)
+            _G._SelectDropdown(dropdown, "Solid")
+            expect(ns.Config.GetTexture(key)).to_equal("Solid")
+            expect(ns.Media.Resolve(mediaType, "Solid")).to_equal(builtIn)
+        end
+        expect(bar._statusBarTexture).to_equal(builtIn)
+        expect(ns.Bar._GetPresentationSnapshot().backdropRegion._texture).to_equal(builtIn)
+        expect(FindBorder()._backdrop.edgeFile).to_equal(builtIn)
+        local fontPath = "Interface\\AddOns\\TestMedia\\solid-font.ttf"
+        _G._stubKnownFileAssets[fontPath], _G._stubFontSetResults[fontPath] = true, true
+        expect(sharedMedia:Register("font", "Solid", fontPath)).to_equal(true)
+        _G._SelectDropdown(state.fontFamily.dropdown, "Solid")
+        expect(ns.Config.GetFontFamily()).to_equal("Solid")
+        expect(ns.Media.Resolve("font", "Solid")).to_equal(fontPath)
+        EditModeManagerFrame:ExitEditMode()
+    end)
+
     it("preserves upgraded placement and repairs only invalid appearance channels", function()
         local saved = {
             schemaVersion = 1,
@@ -54,7 +126,7 @@ describe("Appearance persistence and media recovery", function()
         }
         ns.Config.Initialize(saved)
         expect(IronfurTrackerDB).to_equal(saved)
-        expect(saved.schemaVersion).to_equal(6)
+        expect(saved.schemaVersion).to_equal(8)
         expect(saved.bar.width).to_equal(450)
         expect(saved.bar.offsetX).to_equal(12.5)
         expect(saved.bar.offsetY).to_equal(-20)
@@ -75,7 +147,7 @@ describe("Appearance persistence and media recovery", function()
                 borderSize = 8, borderOffset = -4, alwaysVisible = false },
         }
         ns.Config.Initialize(saved)
-        expect(saved.schemaVersion).to_equal(6)
+        expect(saved.schemaVersion).to_equal(8)
         expect(saved.bar.tickWidth).to_equal(2)
         ExpectColor("tickColor", 1, 1, 1, 1)
         expect(saved.bar.width).to_equal(510)
@@ -110,9 +182,9 @@ describe("Appearance persistence and media recovery", function()
         ns.Config.SetTexture("barTexture", fillName)
         ns.Config.SetTexture("borderTexture", borderName)
         ns.Bar.ApplyAppearance()
-        local fallback = ns.Media.Resolve("statusbar", "Default")
+        local fallback = ns.Media.Resolve("statusbar", "Solid")
         expect(bar._statusBarTexture).to_equal(fallback)
-        expect(FindBorder()._backdrop.edgeFile).to_equal(ns.Media.Resolve("border", "Default"))
+        expect(FindBorder()._backdrop.edgeFile).to_equal(ns.Media.Resolve("border", "Solid"))
         local state = OpenSettings()
         expect(state.textures.barTexture.dropdown:GetText()).to_equal(fillName)
         expect(ns.Config.GetTexture("barTexture")).to_equal(fillName)
@@ -136,7 +208,7 @@ describe("Appearance persistence and media recovery", function()
         local fill = state.textures.barTexture.dropdown
         local border = state.textures.borderTexture.dropdown
         _G._OpenDropdown(fill)
-        expect(fill._menuDescription.entries[1].text).to_equal("Default")
+        expect(fill._menuDescription.entries[1].text).to_equal("Solid")
         for index, entry in ipairs(fill._menuDescription.entries) do
             expect(fill._menuRows[index]._previewTexture._texture).to_equal(ns.Media.Resolve("statusbar", entry.text))
         end
@@ -286,8 +358,8 @@ describe("Appearance control transactions", function()
         expect(ns.Config.GetNumber("borderSize")).to_equal(1)
         expect(ns.Config.GetNumber("borderOffset")).to_equal(0)
         expect(ns.Config.GetNumber("tickWidth")).to_equal(2)
-        expect(ns.Config.GetTexture("barTexture")).to_equal("Default")
-        expect(ns.Config.GetTexture("borderTexture")).to_equal("Default")
+        expect(ns.Config.GetTexture("barTexture")).to_equal("Solid")
+        expect(ns.Config.GetTexture("borderTexture")).to_equal("Solid")
         expect(ns.Config.GetAlwaysVisible()).to_equal(true)
         expect(IronfurTrackerDB.bar.offsetX).to_equal(0)
         expect(IronfurTrackerDB.bar.offsetY).to_equal(0)
