@@ -79,7 +79,7 @@ describe("Font and stack-color persistence", function()
             borderSize = 4, borderOffset = -2, barTexture = "Blizzard", alwaysVisible = false,
         } }
         ns.Config.Initialize(saved)
-        expect(saved.schemaVersion).to_equal(9)
+        expect(saved.schemaVersion).to_equal(10)
         expect(saved.bar.offsetX).to_equal(13.5)
         expect(saved.bar.tickWidth).to_equal(7)
         expect(saved.bar.borderOffset).to_equal(-2)
@@ -89,6 +89,7 @@ describe("Font and stack-color persistence", function()
         expect(ns.Config.GetFontFamily()).to_equal("Friz Quadrata TT")
         expect(ns.Config.GetNumber("fontSize")).to_equal(14)
         expect(ns.Config.GetNumber("fontOffset")).to_equal(0)
+        expect(ns.Config.GetNumber("fontOffsetY")).to_equal(0)
         expect(ns.Config.GetChoice("fontPosition")).to_equal("CENTER")
         expect(ns.Config.GetChoice("fontStyle")).to_equal("SHADOW")
         expect(ns.Config.GetChoice("barColorMode")).to_equal("CLASS")
@@ -109,7 +110,7 @@ describe("Font and stack-color persistence", function()
                 { r = 0.6, g = 0.7, b = 0.8, a = 0.9 } },
         } }
         ns.Config.Initialize(saved)
-        expect(saved.schemaVersion).to_equal(9)
+        expect(saved.schemaVersion).to_equal(10)
         expect(ns.Config.GetFontFamily()).to_equal("Friz Quadrata TT")
         expect(ns.Config.GetChoice("fontStyle")).to_equal("SHADOW")
         expect(ns.Config.GetNumber("fontSize")).to_equal(16)
@@ -124,10 +125,38 @@ describe("Font and stack-color persistence", function()
         Reset()
     end)
 
+    it("migrates horizontal placement and normalizes vertical placement without changing the other axis", function()
+        local saved = { schemaVersion = 9, bar = {
+            fontOffset = -42, fontPosition = "RIGHT", fontSize = 22,
+        } }
+        ns.Config.Initialize(saved)
+        expect(saved.schemaVersion).to_equal(10)
+        expect(saved.bar.fontOffset).to_equal(-42)
+        expect(saved.bar.fontOffsetY).to_equal(0)
+        saved.bar.fontOffsetY = 37
+        ns.Config.Initialize(saved)
+        expect(ns.Config.GetNumber("fontOffsetY")).to_equal(37)
+        for _, invalid in ipairs({ false, "broken", 1.5, math.huge }) do
+            saved.bar.fontOffsetY = invalid
+            ns.Config.Initialize(saved)
+            expect(saved.bar.fontOffsetY).to_equal(0)
+            expect(saved.bar.fontOffset).to_equal(-42)
+            expect(saved.bar.fontPosition).to_equal("RIGHT")
+            expect(saved.bar.fontSize).to_equal(22)
+        end
+        for _, value in ipairs({ -501, 501 }) do
+            saved.bar.fontOffsetY = value
+            ns.Config.Initialize(saved)
+            expect(saved.bar.fontOffsetY).to_equal(value < 0 and -500 or 500)
+            expect(saved.bar.fontOffset).to_equal(-42)
+        end
+        Reset()
+    end)
+
     it("repairs only corrupt font fields and palette channels while retaining later colors", function()
         local saved = { schemaVersion = 4, bar = {
             showStacks = false, fontFamily = "Unavailable saved font", fontSize = 22,
-            fontPosition = "INVALID", fontStyle = "SHADOW", fontOffset = math.huge,
+            fontPosition = "INVALID", fontStyle = "SHADOW", fontOffset = math.huge, fontOffsetY = -21,
             barColorMode = "STACKS", barColor = { r = 0.2, g = 0.3, b = 0.4, a = 0.5 },
             textColor = { r = 0.6, g = "broken", b = 0.8, a = 0.9 },
             stackColors = { [1] = { r = 1, g = "broken", b = 0, a = 1 },
@@ -138,6 +167,7 @@ describe("Font and stack-color persistence", function()
         expect(ns.Config.GetFontFamily()).to_equal("Unavailable saved font")
         expect(ns.Config.GetNumber("fontSize")).to_equal(22)
         expect(ns.Config.GetNumber("fontOffset")).to_equal(0)
+        expect(ns.Config.GetNumber("fontOffsetY")).to_equal(-21)
         expect(ns.Config.GetChoice("fontPosition")).to_equal("CENTER")
         expect(ns.Config.GetChoice("fontStyle")).to_equal("SHADOW")
         expect(ns.Config.GetStackColorCount()).to_equal(3)
@@ -210,31 +240,38 @@ describe("Stack text presentation", function()
         EditModeManagerFrame:ExitEditMode()
     end)
 
-    it("applies anchors, signed offset, size, font effects, and text visibility through controls", function()
+    it("applies anchors, independent signed offsets, size, font effects, and text visibility through controls", function()
         Reset()
         local state = OpenSettings()
         local text = TextRegion()
-        expect(state.rows.fontOffset.label:GetText()).to_equal("Offset")
+        expect(state.rows.fontOffset.label:GetText()).to_equal("Horizontal")
+        expect(state.rows.fontOffsetY.label:GetText()).to_equal("Vertical")
         for _, position in ipairs({ "LEFT", "CENTER", "RIGHT" }) do
             SelectChoice(state, "fontPosition", position)
             state.rows.fontOffset.input:SetFocus()
             state.rows.fontOffset.input:SetText("-12")
             _G._RunFrameScript(state.rows.fontOffset.input, "OnEnterPressed")
+            state.rows.fontOffsetY.input:SetFocus()
+            state.rows.fontOffsetY.input:SetText("-9")
+            _G._RunFrameScript(state.rows.fontOffsetY.input, "OnEnterPressed")
             local point, _, relativePoint, x, y = text:GetPoint()
             expect(point).to_equal(position)
             expect(relativePoint).to_equal(position)
             expect(x).to_equal(-12)
-            expect(y).to_equal(0)
+            expect(y).to_equal(-9)
             expect(text._justifyH).to_equal(position)
         end
         state.rows.fontOffset.slider:SetValue(15)
         expect(select(4, text:GetPoint())).to_equal(15)
-        expect(select(5, text:GetPoint())).to_equal(0)
+        expect(select(5, text:GetPoint())).to_equal(-9)
+        state.rows.fontOffsetY.slider:SetValue(20)
+        expect(state.rows.fontOffsetY.input:GetText()).to_equal("20")
+        expect(IronfurTrackerDB.bar.fontOffsetY).to_equal(20)
         expect(IronfurTrackerDB.bar.fontOffset).to_equal(15)
         state.rows.fontSize.slider:SetValue(24)
         state.rows.width.slider:SetValue(500)
         expect(select(4, text:GetPoint())).to_equal(15)
-        expect(select(5, text:GetPoint())).to_equal(0)
+        expect(select(5, text:GetPoint())).to_equal(20)
         expect(select(2, text:GetFont())).to_equal(24)
         local styles = {
             { "NONE", "", 0 }, { "OUTLINE", "OUTLINE", 0 }, { "SHADOWOUTLINE", "OUTLINE", 0.6 },
@@ -324,6 +361,7 @@ describe("Stack text presentation", function()
         SelectChoice(state, "fontPosition", "RIGHT")
         state.rows.fontSize.slider:SetValue(30)
         state.rows.fontOffset.slider:SetValue(-40)
+        state.rows.fontOffsetY.slider:SetValue(30)
         state.showStacks:SetChecked(false)
         Click(state.showStacks)
         Click(state.resetButton)
@@ -331,7 +369,9 @@ describe("Stack text presentation", function()
         expect(ns.Config.GetChoice("fontStyle")).to_equal("SHADOW")
         expect(ns.Config.GetChoice("fontPosition")).to_equal("CENTER")
         expect(ns.Config.GetNumber("fontOffset")).to_equal(0)
+        expect(ns.Config.GetNumber("fontOffsetY")).to_equal(0)
         expect(state.rows.fontOffset.input:GetText()).to_equal("0")
+        expect(state.rows.fontOffsetY.input:GetText()).to_equal("0")
         expect(select(4, text:GetPoint())).to_equal(0)
         expect(select(5, text:GetPoint())).to_equal(0)
         expect(select(2, text:GetFont())).to_equal(14)
@@ -626,7 +666,7 @@ describe("Bar color by stack count", function()
         ExpectRGBA(bar._statusBarColor, { ns.Config.GetColor("barColor") })
         IronfurTrackerDB.schemaVersion = 5
         ns.Config.Initialize(IronfurTrackerDB)
-        expect(IronfurTrackerDB.schemaVersion).to_equal(9)
+        expect(IronfurTrackerDB.schemaVersion).to_equal(10)
         expect(ns.Config.GetStackColorCount()).to_equal(0)
         Click(palette.addButton)
         expect(ns.Config.HasStackColor(1)).to_equal(true)

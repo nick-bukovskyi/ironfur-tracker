@@ -26,7 +26,7 @@ All notable changes to Ironfur Tracker will be documented in this file.
   It is enabled by default; hiding markers keeps the fill and stack count updating.
 - The bar backdrop now has color, opacity and texture controls for the area
   underneath the fill.
-- Stack text can now be hidden, aligned left/center/right, shifted horizontally,
+- Stack text can now be hidden, aligned left/center/right, shifted horizontally or vertically,
   and customized with color, opacity, font family, size, and shadow/outline styles.
 - Bar color can now use Blizzard's Druid class color or follow editable stack
   ranges. Add or remove individual starting counts; skipped counts inherit the
@@ -56,6 +56,8 @@ All notable changes to Ironfur Tracker will be documented in this file.
 
 ### Changed
 
+- Font positioning now has Horizontal and Vertical controls. Existing horizontal
+  offsets are preserved; Vertical starts at zero.
 - New settings and Reset to Defaults use a black backdrop at 80% opacity, white
   stack text, and a black border. Existing custom colors are preserved.
 - Texture selectors now use the explicit Solid name for Blizzard's built-in

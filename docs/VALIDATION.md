@@ -1,11 +1,11 @@
-# Selection after removing a stack-color range validation
+# Horizontal and Vertical font offsets validation
 
-- Scope: Removal selects the newly covering range, the next available rule when needed, or No stack colors when empty.
-- Persistence: Schema 9 unchanged; only the requested rule is removed and other colors are preserved.
-- Contracts: Existing menu, number input, picker ownership and preview refresh; no game API changes.
+- Scope: Font settings expose Horizontal and Vertical controls with independent signed offsets for every text anchor.
+- Persistence: Schema 10 preserves the existing horizontal offset and adds a vertical offset defaulting to zero; both reset to zero.
+- Contracts: Existing SetPoint accepts both offsets in UI units; controls reuse the signed numeric setting validation and slider/input widgets.
 - Target: Retail live 12.1.0.69587, interface 120100; TOC version 0.1.0 unchanged.
 - Source: Gethe/wow-ui-source live commit 8ea15b61e45c0ed4eba01439c90757f86eb78d34, version.txt 12.1.0.69587.
-- All 95 off-client tests pass from this complete commit snapshot; its Lua files parse successfully.
+- All 96 off-client tests pass from this complete commit snapshot; its Lua files parse successfully.
 - Tests load runtime files in TOC order with addon varargs and strict stubs. They do not establish client rendering or combat safety.
 
 | Context | Evidence |

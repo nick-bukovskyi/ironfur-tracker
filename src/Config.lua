@@ -4,7 +4,7 @@ local _, ns = ...
 local Config = {}
 ns.Config = Config
 
-local CURRENT_SCHEMA_VERSION = 9
+local CURRENT_SCHEMA_VERSION = 10
 local MAXIMUM_STACK_COLORS = 20
 local DEFAULT_FONT_FAMILY = "Friz Quadrata TT"
 local DEFAULT_STACK_COLORS = {
@@ -46,7 +46,16 @@ local NUMERIC_DEFINITIONS = {
     {
         key = "fontOffset",
         section = "Font",
-        label = "Offset",
+        label = "Horizontal",
+        default = 0,
+        min = -500,
+        max = 500,
+        step = 1,
+    },
+    {
+        key = "fontOffsetY",
+        section = "Font",
+        label = "Vertical",
         default = 0,
         min = -500,
         max = 500,

@@ -84,8 +84,10 @@ ticks. These samples do not create tracked applications.
   These are UI units, like bar width and height. Very small bars limit the visible
   thickness and inset to keep an interior; the saved choice is retained.
 - Use **Font** to show or hide the stack number, choose left/center/right placement,
-  and adjust its horizontal offset. Positive offsets move right; negative offsets
-  move left. Choose text color/opacity, a font family, size, and shadow/outline style.
+  and adjust **Horizontal** and **Vertical** offsets. Positive values move right
+  or up; negative values move left or down. Your previous horizontal offset is
+  preserved, and Vertical starts at zero. Choose text color/opacity, a font
+  family, size, and shadow/outline style.
   Font names preview their appearance inside the **Font** selector. New settings
   use white text, **Friz Quadrata TT**, size **14**, and **Drop shadow**. Unavailable fonts use
   Friz Quadrata TT, or the locale's native font if unavailable, until their provider
@@ -105,7 +107,7 @@ Color pickers and texture menus close when editing ends or combat starts.
 The settings content scrolls when the available screen height requires it.
 The window fits the slider-and-input rows with equal side margins; scrolling
 uses the existing right margin.
-Text size accepts 8-64 UI units and horizontal offset accepts -500 to 500.
+Text size accepts 8-64 UI units; both font offsets accept whole numbers from -500 to 500.
 
 Snapping sets the bar's position; it does not attach the bar to another element.
 Moving that element afterward leaves Ironfur Tracker where it was placed.
