@@ -2,6 +2,28 @@
 
 ## Current change and proof boundary
 
+The branding follow-up moves the approved full-resolution logo to `public/logo.png`
+and adds unchanged Downloads screenshots under `public/screenshots`. The README
+uses these repository images. `IconTexture` in the TOC points to `public/logo.tga`,
+a 256 x 256 uncompressed 32-bit derivative for the AddOns list. The player package
+includes that TGA; the repository README/gallery, full-resolution PNG, screenshots
+and generation notes are excluded. No Lua loading order, SavedVariables, version
+or interface changes are involved.
+
+The latest addition is By time remaining, with configurable RGBA colors for
+three fixed fill ranges: above 50% green, above 25% through 50% yellow, and
+0%-25% red. It uses the maximum normalized progress already rendered as the fill,
+including mixed-duration ticks, and retints during existing updates when the
+count stays unchanged. It does not change the timer model or read aura duration.
+Schema 11 adds the three colors through existing field normalization; existing
+color modes and customization survive, and Class color remains the default.
+The label follow-up changes the lower threshold from 20% to 25% without
+changing schema 11 or saved colors. The wider duration labels read Over half
+left, Quarter to half left, and Quarter or less left. Swatch tooltips spell out
+the exact ranges and close on leave, click or row hiding without closing another
+owner's tooltip. The supplied screenshot confirms the previous label concern;
+it does not establish the client build or verify the replacement labels.
+
 The current implementation adds grouped appearance settings, shared-media bar
 and border selectors, and default empty-bar visibility for every Druid in Bear
 Form. Settings remain account-wide. The latest addition makes the existing
@@ -10,8 +32,14 @@ opacity and texture controls. New/reset defaults are a black backdrop at 80%
 alpha, white stack text, a black border, and explicit Solid textures in all three
 texture menus. Saved custom colors and named media remain intact; old Default
 texture names migrate to Solid.
-The latest settings update fits the panel to the numeric controls with equal
-20-unit side margins and adds Show ticks, enabled by default. Tick visibility
+The settings panel reserves a fixed scrollbar column after the numeric controls,
+with 20-unit outer margins. Its scrollbar stays visible and uses Blizzard's
+inactive state when everything fits. The panel initially anchors to the vertical
+center, caps its height 80 UI units below the screen height, and recalculates
+on existing display-size/UI-scale events and opening. Ordinary refreshes keep
+a manually dragged anchor; native screen clamping remains enabled. This changes
+only editor layout, with no new saved fields, events or tracking behavior.
+Show ticks is enabled by default. Tick visibility
 applies to the live bar and preview without changing tracking, fill or text.
 Font placement now exposes Horizontal and Vertical offsets. The existing
 horizontal setting stays intact; the new vertical setting starts at zero.
@@ -59,8 +87,11 @@ width and height move into Bar and the separate Size section is removed.
   Schema 8 defaults passed 90 tests and the Solid-defaults archive checks.
   Schema 9 tick-visibility and panel-width changes passed 94 tests and archive
   checks. The removal-selection refinement kept schema 9 and passed 95 tests
-  plus archive checks. Current schema 10 font-offset changes complete this series;
-  all 96 tests and the updated archive checks passed.
+  plus archive checks. Schema 10 font-offset changes completed that series;
+  all 96 tests and the updated archive checks passed before the scrollbar and
+  centered-panel follow-up.
+  The scrollbar follow-up also passed 96 tests and archive checks before this
+  schema 11 duration-color addition.
 
 ## API and lifecycle evidence
 
@@ -82,6 +113,8 @@ evidence is secondary and actual asset rendering remains an in-game gate.
 
 | Contract | Build-matched source | Design consequence |
 | --- | --- | --- |
+| AddOns-list icon metadata | `Blizzard_AddOnList/AddonList.lua:374-390` in the pinned 69587 source | The native list reads IconTexture before IconAtlas and prepends the image at 20 x 20 to the title. `Interface\AddOns\IronfurTracker\public\logo.tga` is resource metadata, not a TOC execution file. No custom list hooks or new runtime API calls are needed. The mirror does not establish the texture decoder whitelist or maximum dimensions; actual TGA loading remains an in-client gate |
+| Duration color and displayed fill | `Blizzard_APIDocumentationGenerated/SimpleStatusBarAPIDocumentation.lua:162-172,282,355-364` | GetValue takes no arguments and returns a nonnil number, with secrecy depending on the BarValue aspect. SetValue defaults to immediate interpolation and marks that aspect when secret input is supplied. This owned StatusBar receives only locally calculated ordinary normalized values. ApplyAppearance reuses GetValue instead of duplicating progress state; Config validates secrecy and finiteness before range comparisons. Existing SetStatusBarColor receives validated RGBA. No aura reads, new timers or additional native event dependencies |
 | Player class, cast event payload, secret predicates | `Blizzard_APIDocumentationGenerated/UnitDocumentation.lua` and `SecretPredicatesDocumentation.lua` | Class token determines eligibility; no specialization query. Player cast payloads may still be restricted by individual spell flags, so secret values are ignored |
 | Form IDs and existing form reader | `Blizzard_FrameXMLBase/Constants.lua`, Cat 1 and Bear 5 | Preserve the existing `GetShapeshiftFormID()` boundary; secret form values suspend rendering. Full legacy reader behavior across forms remains a live evidence gate |
 | Known spells and spellbook changes | `Blizzard_APIDocumentationGenerated/SpellBookDocumentation.lua` | `C_SpellBook.IsSpellKnown` defaults to the player bank; `SPELLS_CHANGED` has no payload and refreshes retention/proc state |
@@ -97,12 +130,14 @@ evidence is secondary and actual asset rendering remains an in-game gate.
 | Backdrop texture, tint and layering | `Blizzard_APIDocumentationGenerated/SimpleTextureBaseAPIDocumentation.lua:600`, `SimpleRegionAPIDocumentation.lua:191`, `SimpleFrameAPIDocumentation.lua:131`; `Blizzard_SharedXML/UI.xsd` and `Backdrop.lua:266,412` | `SetTexture` accepts a nullable asset plus wrap/filter arguments and returns success; `SetVertexColor` accepts RGB and optional alpha. Both permit tainted secret arguments, but this feature passes validated ordinary settings. CreateTexture sets the BACKGROUND layer beneath the statusbar's default ARTWORK fill. Native Backdrop code pairs the same texture/tint calls. Reuse the region without changing fill, ticks or timers |
 | Menus and pooled previews | `Blizzard_Menu/DropdownButton.lua`, `MenuTemplates.lua`, `Compositor.lua` | Native radio menus, scrollable lists, attached textures/templates, and per-dropdown closure |
 | Scrollable settings | `Blizzard_SharedXML/Shared/Scroll/ScrollUtil.lua`, `MinimalScrollBar.lua`/XML | Native ScrollFrame/MinimalScrollBar synchronization; fixed reset-button clearance |
-| Balanced settings width | `Blizzard_SharedXML/Shared/Scroll/MinimalScrollBar.xml:18,125,147`; `Shared/InputBox/InputBoxTemplates.xml`; `DialogTemplates.xml:97-103` | Numeric controls end at 363 UI units, giving a 403-wide panel with the existing 20-unit left margin mirrored on the right. Dividers/reset share that width; the stack Remove button anchors to the same right edge. Scrollbar center sits 10 units beyond content; its 8-unit track and 17-unit arrows fit the margin. The dialog background is inset 7 units, so arrow proximity to border artwork remains a live visual gate |
+| Settings scrollbar column and inactive state | `Blizzard_SharedXML/Shared/Scroll/MinimalScrollBar.xml:100-141`, `ScrollUtil.lua:215-282,1719-1723`, `ScrollBar.lua:237-265`; `DialogTemplates.xml:97-103` | Numeric controls end at 363 UI units. The 428-wide panel reserves an 8-unit gap, the 17-unit arrow footprint, and 20-unit outer margins. Dividers and stack actions retain the content width; reset spans the full interior. ScrollUtil sets visible extent to 1 at zero range; native ScrollBar.Update then disables both arrows and hides/disables the thumb while retaining the track. Addon visibility overrides are removed; native pixels and input remain a live gate |
+| Vertical settings placement and viewport changes | `Blizzard_APIDocumentationGenerated/SimpleScriptRegionResizingAPIDocumentation.lua:135`, `SimpleFrameAPIDocumentation.lua:1206`; existing `Core.lua` display-size/UI-scale event handling | The owned unprotected panel anchors RIGHT to UIParent RIGHT at Y=0 and inherits its scale, so size and anchor values share UI units. Its height uses UIParent height minus 80 without the old 240-unit minimum, keeping at least 40 units above and below the initial centered panel. Native clamping handles dragged positions; settings refresh never replaces that anchor. No GetCenter or protected/secret geometry is read |
 | Tick visibility | `Blizzard_APIDocumentationGenerated/SimpleFrameAPIDocumentation.lua:1482` | Existing `SetShown(bool)` on the ordinary addon-owned tick layer controls inherited visibility, including newly acquired textures. The method is protected when the target frame is protected; this layer is not. No secure actions or new event/lifecycle paths are introduced; actual combat and taint behavior remains unverified |
 | Textured outline | `Blizzard_SharedXML/Backdrop.lua` and `Backdrop.xml` | `BackdropTemplate`, `edgeFile`, `edgeSize`, RGBA tint; separate frame anchors implement offset. Nonpositive size clears the backdrop instead of invoking the client's default edge size |
 | Tick dimensions and placement | `Blizzard_APIDocumentationGenerated/SimpleScriptRegionResizingAPIDocumentation.lua`, `SetSize` and `SetPoint` | Existing calls use UI-unit dimensions and offsets on addon-owned textures. The fix changes their geometry inputs only; no new protected frame or secure attribute interaction |
 | Native Edit Mode selection lifecycle | `Blizzard_EditMode/Shared/EditModeManager.lua` and `EditModeSystemTemplates.lua` | Native selection hiding suspends interaction; highlight opacity is independent. `ShowSelected` and `ShowHighlighted` do not reset alpha |
-| Eye texture and tooltip ownership | `Blizzard_APIDocumentationGenerated/SimpleButtonAPIDocumentation.lua`, `SimpleTextureBaseAPIDocumentation.lua`, and `Blizzard_GameTooltip/Mainline/GameTooltip.lua` | A normal button texture accepts sprite UVs; close only the eye's owned tooltip and do not revive it after mouse leave |
+| Eye texture and tooltip ownership | `Blizzard_APIDocumentationGenerated/SimpleButtonAPIDocumentation.lua`, `SimpleTextureBaseAPIDocumentation.lua`, and `Blizzard_GameTooltip/Mainline/GameTooltip.lua` | A normal button texture accepts sprite UVs; close only the eye's owned tooltip and do not revive it after mouse leave. Duration swatches reuse SetOwner, GetOwner, SetText, Show and Hide with ordinary static text. Row OnHide and swatch OnLeave/OnClick close only the owned tooltip; native parent-hide delivery, hover pixels and label width remain live checks |
+| Duration swatch tooltip call sites | `Blizzard_Menu/MenuUtil.lua:98-110`; `Blizzard_Minimap/Mainline/Minimap.lua:321-325`; `Blizzard_APIDocumentationGenerated/SimpleScriptRegionAPIDocumentation.lua:320,679` | Pinned Blizzard code uses SetOwner(owner, ANCHOR_RIGHT), Show, GetOwner equality before Hide, and SetText with one string. The generated tooltip docs overstate required color arguments, so the direct call site supports the existing one-string pattern. Native ancestor-hide propagation remains a live validation gate |
 
 [Blizzard's 12.1 aura announcement](https://us.forums.blizzard.com/en/wow/t/addons-and-auras-in-curse-of-ula%E2%80%99tek/2317456/)
 describes display-only filtered aura APIs. This change keeps observed-cast timer
@@ -175,13 +210,19 @@ behavior remain unverified.
 
 ## State and upgrade contract
 
-- Config owns schema 10, defaults, validation, and durable choices. Additive
+- Config owns schema 11, defaults, validation, and durable choices. Additive
   validation preserves schema 1 size/position and schema 2 appearance, including
   fractional offsets and schema 3 tick settings. Tick width defaults to 2 in the
   range 1-20; tick color defaults to opaque white `(1, 1, 1, 1)`.
   Numeric fields and color channels are
   validated before the schema advances; existing valid choices are retained.
   Missing visibility and Show stacks default to true; explicit false is preserved.
+- Schema 11 adds `durationHighColor`, `durationMediumColor`, and
+  `durationLowColor` through the existing per-channel color normalization.
+  Fixed 50%/25% boundaries are code rules, not saved settings. Duration mode
+  retints during existing rendering; other modes retain count-gated tint updates.
+  Appearance refresh reads the owned bar's current value, with no extra timer,
+  progress cache, aura lookup or media scan in the update path.
 - Schema 9 adds boolean `showTicks`, default true for missing/invalid fields and
   reset, preserving explicit false. Bar appearance applies it to the existing
   unprotected tick layer with `SetShown`; child textures keep current progress
@@ -283,9 +324,16 @@ that were not available during this implementation.
 
 | Context or transition | Applicability | Expected behavior and practical proof |
 | --- | --- | --- |
-| Clean, schema 1/2/3/4/5/6/7/8/9/10, partially corrupt settings; repeated initialization and reset | Required | Preserve existing choices, including explicit false, sparse rules, empty lists, custom colors, media and horizontal text placement. Repair only invalid fields; migrate Default texture aliases to Solid and add vertical placement at zero. Reset restores both text offsets to zero and the other current defaults. Schema 10 defaults, preservation and corrupt-field repair passed off-client. Actual persistence across sessions remains unverified |
+| Character-selection and in-game AddOns list, enabled/disabled or loaded/unloaded addon, list reopening and UI scale | Evidence-gated | The metadata resolves to the bundled logo beside Ironfur Tracker without changing addon enable state or list behavior. TOC path, package inclusion, decoded image structure and orientation passed off-client. Native texture loading, small-icon legibility, missing-texture errors and both native list environments require Retail 12.1.0.69587 |
+| Repository logo/gallery and original Downloads files | Required | Main README references existing public assets; the three screenshots remain byte-identical to their originals. Approved PNG is preserved and only its game derivative is resized. Screenshot hashes, dimensions and asset paths passed local checks; no external upload or listing update performed |
+| Duration mode at 100%, either side of 50% and 25%, below 1%, and zero; unchanged count; new cast and expiry | Required | Follow the exact fill percentage, using yellow at 50% and red at 25%. Retint during existing updates without needing a cast or count change, return to the appropriate band after a new cast, and show only backdrop when empty. Exact .2501/.25/.2499/.2 values and a seven-second application reaching 25% at 5.25 seconds passed off-client; live animation, restricted combat, native tint/alpha and frame timing remain unverified |
+| Duration labels and swatch tooltips; leave, click, mode switch, parent hide and different tooltip owner | Required | Use plain-language ranges, keep named labels in their wider column, show exact percentages on hover, and hide only the owned tooltip. Repeated mode/hover transitions and picker clicks pass off-client. Native parent-hide events, text fitting at different UI scales and actual hover/tooltip placement remain unverified |
+| Overlapping applications with different talent-adjusted durations; form/combat/preview transitions; geometry or media refresh | Required | Use the same maximum normalized progress as the existing fill, retain each tick's captured duration, and reapply the color from the current displayed fill during appearance changes. Edit Mode uses its existing synthetic progress without creating tracked casts. No new talent or aura inference. Off-client rendering/state transitions are available; actual talents, loading/reload with an already-active aura, form changes and combat recovery remain unverified under the existing timer model's limitations |
+| Schema 10/11, custom duration colors, corrupt channels, mode switches, reset, picker cancellation and interruption | Required | Add missing RGBA fields, preserve valid choices and modes, repair only invalid channels, and reset green/yellow/red with Class color still the default. Show three color swatches only in duration mode, with no editable threshold controls. Cancel/interruption must restore the opening color and reject stale callbacks. Off-client persistence, transaction and layout assertions are available; native picker/scrolling, session persistence and combat/taint remain unverified |
+| Clean, schema 1/2/3/4/5/6/7/8/9/10/11, partially corrupt settings; repeated initialization and reset | Required | Preserve existing choices, including explicit false, sparse rules, empty lists, custom colors, media and horizontal text placement. Repair only invalid fields; migrate Default texture aliases to Solid and add vertical placement at zero plus default duration colors. Reset restores both text offsets to zero and the other current defaults. Schema 11 defaults, preservation and corrupt-field repair passed off-client. Actual persistence across sessions remains unverified |
 | Show ticks on/off in Edit Mode and live tracking; casts and expiry while hidden; reset, hidden text and empty fill | Required | Hide the tick layer only; continue fill, count and stack colors, including new/expired ticks. Restore current markers without reviving expired ones or duplicating regions. Persist false and reset true. Focused off-client regressions passed; live preview/rendering, combat interruption and reload persistence remain unverified |
-| Balanced width in all color modes, full-height and scrolling panels, repeated open/close and reset | Required | Preserve the existing 20-unit left margin and match the numeric input's right margin; fit stack actions and hint text within the same width. Keep scrollbar usable and reset reachable. Off-client geometry assertions passed; actual font wrapping, UI scale, native scrollbar border clearance and pointer interaction remain unverified |
+| All color modes, no-scroll to scroll to no-scroll, repeated open/close and reset | Required | Keep width constant with an 8-unit content gap and dedicated 17-unit arrow column inside equal 20-unit outer margins; retain stack actions inside content and reset inside the panel. Scrollbar stays shown and receives visible extent 1 when everything fits; shrinking the range clamps the offset and restores content access. Off-client layout/state checks are possible; native inactive artwork, arrows, thumb, wheel input and border clearance remain unverified |
+| Initial opening; smaller/larger viewport; UI-scale/display-size changes while open or hidden; manual dragging | Required | Start vertically centered, cap height to the screen minus 80 UI units, retain positive scroll area and reset clearance, and recalculate on opening and existing viewport events. Ordinary refreshes and reopening retain the dragged anchor without duplicating frames. Anchor/height/event checks are off-client; exact centering, native drag/clamping, UI-scale pixels and small-screen menus require Retail 12.1.0.69587 |
 | Guardian, Feral, Balance, Restoration, unspecialized Druid; non-Druid; enter/leave Bear | Evidence-gated | Off-client state cases exercise class-only eligibility, empty display, casting, and editing outside Bear. Actual form/spell availability requires each Druid spec in the client |
 | Toggle while idle/active; first/overlapping casts; final expiry | Evidence-gated | Empty bar is visible by default, optional hide occurs after last expiry, ticks/count clear, and animation stops when idle. Source/stub assertions cannot prove actual timing/rendering |
 | Spec, talent, loadout, spellbook changes; Cat retention acquired/lost | Evidence-gated | Refresh eligibility and known-spell-dependent retention, invalidate pending procs, retain assigned tick expiry where still applicable, recover without reload |
@@ -343,7 +391,16 @@ archive. These results predate the later customization changes and remain histor
 - Focused dialog/highlight run: all 11 tests passed. All four new dialog
   regressions fail with the close call removed in memory; the seven existing
   highlight tests still pass. This does not prove native mouse or combat behavior.
-- Current `lua tests/runner.lua`: all 96 tests passed, including five Backdrop
+- Current `lua tests/runner.lua`: all 102 tests passed. Six new duration-color
+  regressions cover additive schema 10-to-11 defaults, saved customization and
+  channel repair, exact/adjacent thresholds and invalid progress, unchanged-count
+  animation and new casts/expiry, mixed 12/7-second applications, current-fill
+  appearance refresh, conditional swatches with stable scrolling layout, and
+  picker accept/cancel/mode-change/combat/reset with stale callback rejection.
+  The 25% follow-up updates the exact lower boundary and unchanged-count timer
+  regression, and verifies the three labels, range tooltips, hover/mode cleanup,
+  owner isolation and swatch-click cleanup within those existing tests.
+  The expanded suite also includes five Backdrop
   regressions covering defaults/migration, independent empty/live/expired
   rendering, RGBA rollback/reset/combat callbacks, late media recovery, and
   section order with width/height in Bar. Two additional regressions cover schema 8
@@ -351,7 +408,14 @@ archive. These results predate the later customization changes and remain histor
   reserved Solid option in each texture menu with font families unaffected.
   Four regressions cover Show ticks persistence/validation, hidden pooled
   and newly created preview markers/reset, live timing/colors/expiry/restoration,
-  and balanced input margins across color modes and a short scrolling viewport.
+  and the dedicated scrollbar column across color modes. The existing layout
+  regressions now exercise Class to Stack to Solid to Class transitions, zero
+  range with native visible extent 1, range/offset clamping, fixed panel width,
+  8-unit content gap, 17-unit arrow footprint and 20-unit outer margins. They also
+  assert the initial vertical-center anchor, 300/1600-unit viewport changes,
+  display/scale events, reset clearance, hidden-panel resize/reopening, and
+  three refresh/reopen cycles retaining a supplied drag anchor without new frames.
+  Native drag, scale, scrollbar disabling and pixel geometry are not emulated.
   The latest removal regression confirms 2 selects the 1-2 range, exactly one
   matching radio is selected, the picker edits rule 1 without altering other
   colors, and removing the first rule selects the next one. Existing tests also
@@ -360,16 +424,32 @@ archive. These results predate the later customization changes and remain histor
   horizontal placement, repairs only invalid vertical input, retains valid vertical
   values and clamps persisted values to -500/500. Existing control/reset tests now
   exercise both axes and exact Horizontal/Vertical labels at all three anchors.
-  All 21 Lua files parsed successfully;
+  All 22 Lua files parsed successfully;
   `git diff --check` passed.
 - The current TOC still contains 12 runtime/library Lua files and loads
   `SettingsColorPicker.lua` before `Settings.lua`. The inspected workspace now
-  contains 21 runtime/library/test Lua files.
+  contains 22 runtime/library/test Lua files.
+- Branding verification: Pillow 12.3 independently decoded `public/logo.tga` as
+  256 x 256 RGBA with opaque alpha. Its uncompressed true-color header, 32-bit
+  BGRA payload, bottom-left origin and exact 262,162-byte length passed checks;
+  every decoded pixel matched the payload. Comparison to the approved PNG
+  confirmed upright orientation. TGA SHA-256:
+  `CA4F1787B20B405859C7623024CBA63FB277AD6777AB5DACE4D91B28C7F8DA00`.
+  All three public screenshots matched the Downloads originals byte for byte.
 - Current no-upload archive: all 17 entries have exact path casing and matching
   workspace source hashes. The package includes 12 runtime/library Lua files,
-  matching folder/TOC, README, changelog and library licenses. Tests and
-  development notes are excluded.
-- Archive: `C:\Temp\IronfurTracker-0.1.0-unreleased-font-offsets-20260903.zip`
+  matching folder/TOC, the TGA icon, changelog and library licenses. Tests,
+  repository README/gallery, PNG screenshots, logo master and development notes
+  are excluded. The TGA replaces the former repository README in this manifest.
+- Archive: `C:\Temp\IronfurTracker-0.1.0-unreleased-public-assets-20260903.zip`
+  SHA-256: `AF88785B2B5AC5B984BFEA1EC25F8393B15D3F912487B108EBC6FBA654AFDFAA`
+- Previous duration-labels archive (historical): `C:\Temp\IronfurTracker-0.1.0-unreleased-duration-labels-20260903.zip`
+  SHA-256: `4B4D3370AF7146C070DCB92C4EF154D6A9687D4826EA43089D61F1F88C87CD5D`
+- Previous duration-colors archive (historical): `C:\Temp\IronfurTracker-0.1.0-unreleased-duration-colors-20260903.zip`
+  SHA-256: `D64AD579DD7CF484EB73200DEF963AC17F4F8D4E2253B10581CAF27D2D5E5FBC`
+- Previous settings-layout archive (historical): `C:\Temp\IronfurTracker-0.1.0-unreleased-settings-layout-20260903.zip`
+  SHA-256: `C67BED16D9B8B2C990745462EE16A98CA01C9E8BC93396CEA9A99394C1F4A7AC`
+- Previous font-offsets archive (historical): `C:\Temp\IronfurTracker-0.1.0-unreleased-font-offsets-20260903.zip`
   SHA-256: `D361B9A836CBB71FF70F32C0B0DCECF03587F4A05C518C94ACE90923C4D29C68`
 - Previous stack-range-selection archive (historical): `C:\Temp\IronfurTracker-0.1.0-unreleased-stack-range-selection-20260903.zip`
   SHA-256: `7CC7E37FE2AB7B8D5843B0DE844B878F522C73B30FFA2DC8212892A9F0895C53`
@@ -399,16 +479,22 @@ archive. These results predate the later customization changes and remain histor
   below remain distinct from the current main-suite and feature results.
 - No live `GetBuildInfo()` capture, package installation, client control or real
   SavedVariables changes were performed. No tags, pushes, uploads or publishing
-  were performed. The implementation is organized into seven focused commits:
+  were performed. The implementation before this layout follow-up was organized
+  into seven focused commits:
   EnhanceQoL dialog handoff, font and stack-color controls, backdrop settings,
   appearance defaults, tick visibility and margins, range selection, and font offsets.
   Each complete commit snapshot passed its matching suite: 68, 83, 88, 90, 94,
   95 and 96 tests respectively. Intermediate snapshots were checked in temporary
   directories without replacing the final working files.
   A separate documentation commit consolidates the current API, package and
-  gameplay-validation evidence without changing runtime behavior.
+  gameplay-validation evidence without changing runtime behavior. The scrollbar
+  and vertical-centering follow-up is committed as `baa793d`; its isolated staged
+  snapshot passed all 96 tests. Duration colors, the 25% boundary and readable
+  labels are committed as `15410a4`; that staged snapshot passed all 102 tests,
+  and all 22 Lua files parsed. Branding and its gallery are committed separately.
 
-Result: Horizontal and Vertical font-offset implementation, automated and package checks passed.
+Result: Public branding assets and native AddOns-list icon metadata implemented;
+automated and package checks passed.
 The live context matrix remains unverified. A
 reviewed diff and off-client checks do not establish release readiness; the
 exact artifact must be installed and the live matrix exercised.
