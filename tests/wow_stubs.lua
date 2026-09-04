@@ -2,6 +2,7 @@
 -- Only contracts exercised by the add-on are represented here.
 
 local unpackValues = table.unpack or unpack
+strmatch = string.match
 
 local function AssertType(value, expected, label)
     if type(value) ~= expected then
@@ -15,17 +16,86 @@ local function AssertNoExtraArguments(name, ...)
     end
 end
 
+-- Desktop compatibility for the bundled libraries' documented WoW globals
+function getfenv(level, ...)
+    AssertNoExtraArguments("getfenv", ...)
+    if level ~= 0 then error("only getfenv(0) is exercised by the bundled libraries", 2) end
+    return _G
+end
+
+bit = {
+    band = function(left, right, ...)
+        AssertNoExtraArguments("bit.band", ...)
+        AssertType(left, "number", "left bit mask")
+        AssertType(right, "number", "right bit mask")
+        local result, place = 0, 1
+        while left > 0 and right > 0 do
+            if left % 2 == 1 and right % 2 == 1 then result = result + place end
+            left, right, place = math.floor(left / 2), math.floor(right / 2), place * 2
+        end
+        return result
+    end,
+}
+
+function GetLocale(...)
+    AssertNoExtraArguments("GetLocale", ...)
+    return "enUS"
+end
+
+function securecallfunction(callback, ...)
+    AssertType(callback, "function", "securecallfunction callback")
+    -- Preserve callback dispatch, but make callback errors fail the desktop test
+    return callback(...)
+end
+
+_G._stubKnownFileAssets = {}
+C_UIFileAsset = {
+    IsKnownFile = function(asset, ...)
+        AssertNoExtraArguments("C_UIFileAsset.IsKnownFile", ...)
+        if type(asset) ~= "string" and type(asset) ~= "number" then
+            error("IsKnownFile requires a file asset", 2)
+        end
+        local known = _G._stubKnownFileAssets[asset]
+        if known == nil then error("file asset has no test fixture: " .. tostring(asset), 2) end
+        return known
+    end,
+}
+
 local TextureMixin = {}
 TextureMixin.__index = TextureMixin
 
 function TextureMixin:SetAllPoints(...) self._allPoints = { ... } end
 function TextureMixin:SetColorTexture(...) self._color = { ... } end
+function TextureMixin:SetTexture(asset, ...)
+    AssertNoExtraArguments("Texture:SetTexture", ...)
+    if asset ~= nil and type(asset) ~= "string" and type(asset) ~= "number" then
+        error("SetTexture requires a file asset or nil", 2)
+    end
+    self._texture = asset
+    return asset ~= nil
+end
+function TextureMixin:SetVertexColor(r, g, b, a, ...)
+    AssertNoExtraArguments("Texture:SetVertexColor", ...)
+    AssertType(r, "number", "red")
+    AssertType(g, "number", "green")
+    AssertType(b, "number", "blue")
+    if a ~= nil then AssertType(a, "number", "alpha") end
+    self._vertexColor = { r, g, b, a or 1 }
+end
 function TextureMixin:SetSize(width, height) self._width = width; self._height = height end
 function TextureMixin:SetWidth(width) self._width = width end
 function TextureMixin:SetHeight(height) self._height = height end
 function TextureMixin:GetWidth() return self._width or 0 end
 function TextureMixin:GetHeight() return self._height or 0 end
 function TextureMixin:SetPoint(...) self._point = { ... } end
+function TextureMixin:SetTexCoord(left, right, top, bottom, ...)
+    AssertNoExtraArguments("Texture:SetTexCoord", ...)
+    AssertType(left, "number", "left texture coordinate")
+    AssertType(right, "number", "right texture coordinate")
+    AssertType(top, "number", "top texture coordinate")
+    AssertType(bottom, "number", "bottom texture coordinate")
+    self._texCoord = { left, right, top, bottom }
+end
 function TextureMixin:GetPoint()
     if not self._point then return nil end
     return unpackValues(self._point)
@@ -70,6 +140,15 @@ end
 function FrameMixin:GetSize() return self:GetWidth(), self:GetHeight() end
 function FrameMixin:GetScale() return self._scale or 1 end
 function FrameMixin:SetScale(value) self._scale = value end
+function FrameMixin:SetAlpha(alpha, ...)
+    AssertNoExtraArguments("SetAlpha", ...)
+    AssertType(alpha, "number", "alpha")
+    self._alpha = alpha
+end
+function FrameMixin:GetAlpha(...)
+    AssertNoExtraArguments("GetAlpha", ...)
+    return self._alpha or 1
+end
 function FrameMixin:GetEffectiveScale()
     if self._effectiveScale ~= nil then return self._effectiveScale end
     local parentScale = self._parent and self._parent:GetEffectiveScale() or 1
@@ -155,6 +234,88 @@ function FrameMixin:SetMinMaxValues(minimum, maximum) self._min = minimum; self.
 function FrameMixin:SetStatusBarTexture(texture) self._statusBarTexture = texture end
 function FrameMixin:SetStatusBarColor(...) self._statusBarColor = { ... } end
 
+function FrameMixin:SetBackdrop(info, ...)
+    AssertNoExtraArguments("SetBackdrop", ...)
+    if self._template ~= "BackdropTemplate" then
+        error("SetBackdrop requires BackdropTemplate", 2)
+    end
+    if info ~= nil then
+        AssertType(info, "table", "backdrop info")
+        for key in pairs(info) do
+            if key ~= "edgeFile" and key ~= "edgeSize" and key ~= "bgFile"
+                and key ~= "tile" and key ~= "tileSize" and key ~= "insets" then
+                error("unexpected backdrop field: " .. tostring(key), 2)
+            end
+        end
+        if info.edgeFile ~= nil and type(info.edgeFile) ~= "string" and type(info.edgeFile) ~= "number" then
+            error("backdrop edgeFile requires a file asset", 2)
+        end
+        if info.edgeSize ~= nil then AssertType(info.edgeSize, "number", "backdrop edge size") end
+    end
+    self._backdrop = info
+end
+
+function FrameMixin:SetBackdropBorderColor(r, g, b, a, ...)
+    AssertNoExtraArguments("SetBackdropBorderColor", ...)
+    if self._template ~= "BackdropTemplate" then
+        error("SetBackdropBorderColor requires BackdropTemplate", 2)
+    end
+    AssertType(r, "number", "red")
+    AssertType(g, "number", "green")
+    AssertType(b, "number", "blue")
+    if a ~= nil then AssertType(a, "number", "alpha") end
+    if self._backdrop then self._borderColor = { r, g, b, a or 1 } end
+end
+
+function FrameMixin:SetChecked(checked, ...)
+    AssertNoExtraArguments("SetChecked", ...)
+    if self._type ~= "CheckButton" then error("SetChecked requires a CheckButton", 2) end
+    if checked ~= nil then AssertType(checked, "boolean", "checked") end
+    self._checked = checked or false
+end
+
+function FrameMixin:GetChecked(...)
+    AssertNoExtraArguments("GetChecked", ...)
+    if self._type ~= "CheckButton" then error("GetChecked requires a CheckButton", 2) end
+    return self._checked or false
+end
+
+function FrameMixin:EnableMouseWheel(enabled, ...)
+    AssertNoExtraArguments("EnableMouseWheel", ...)
+    AssertType(enabled, "boolean", "mouse wheel enabled")
+    self._mouseWheelEnabled = enabled
+end
+
+function FrameMixin:SetScrollChild(child, ...)
+    AssertNoExtraArguments("SetScrollChild", ...)
+    if self._type ~= "ScrollFrame" then error("SetScrollChild requires a ScrollFrame", 2) end
+    AssertType(child, "table", "scroll child")
+    if not child._type then error("scroll child must be a frame", 2) end
+    child._parent = self
+    self._scrollChild = child
+end
+
+function FrameMixin:GetVerticalScroll(...)
+    AssertNoExtraArguments("GetVerticalScroll", ...)
+    if self._type ~= "ScrollFrame" then error("GetVerticalScroll requires a ScrollFrame", 2) end
+    return self._verticalScroll or 0
+end
+
+function FrameMixin:GetVerticalScrollRange(...)
+    AssertNoExtraArguments("GetVerticalScrollRange", ...)
+    if self._type ~= "ScrollFrame" then error("GetVerticalScrollRange requires a ScrollFrame", 2) end
+    return math.max(0, (self._scrollChild and self._scrollChild:GetHeight() or 0) - self:GetHeight())
+end
+
+function FrameMixin:SetVerticalScroll(offset, ...)
+    AssertNoExtraArguments("SetVerticalScroll", ...)
+    if self._type ~= "ScrollFrame" then error("SetVerticalScroll requires a ScrollFrame", 2) end
+    AssertType(offset, "number", "scroll offset")
+    self._verticalScroll = offset
+    local callback = self:GetScript("OnVerticalScroll")
+    if callback then callback(self, offset) end
+end
+
 local function TriggerFrameCallback(frame, event, ...)
     local callbacks = frame._callbacks and frame._callbacks[event]
     if not callbacks then return end
@@ -196,6 +357,12 @@ function FrameMixin:Hide()
     if changed and self._scripts and self._scripts.OnHide then
         self._scripts.OnHide(self)
     end
+end
+
+function FrameMixin:SetShown(shown, ...)
+    AssertNoExtraArguments("SetShown", ...)
+    AssertType(shown, "boolean", "shown")
+    if shown then self:Show() else self:Hide() end
 end
 
 function FrameMixin:IsShown() return self._shown == true end
@@ -252,8 +419,10 @@ function FrameMixin:CreateFontString(name, layer, template)
     if name ~= nil then AssertType(name, "string", "font string name") end
     if layer ~= nil then AssertType(layer, "string", "font string layer") end
     local allowedFontTemplates = {
+        GameFontHighlight = true,
         GameFontHighlightLarge = true,
         GameFontHighlightMedium = true,
+        GameFontNormalMed3 = true,
         GameFontNormalLarge = true,
     }
     if template ~= nil and not allowedFontTemplates[template] then
@@ -332,6 +501,22 @@ function FrameMixin:SetAutoFocus(value) self._autoFocus = value and true or fals
 function FrameMixin:SetNumeric(value) self._numeric = value and true or false end
 function FrameMixin:SetMaxLetters(value) self._maxLetters = value end
 function FrameMixin:SetJustifyH(value) self._justifyH = value end
+function FrameMixin:SetNormalTexture(asset, ...)
+    AssertNoExtraArguments("SetNormalTexture", ...)
+    if self._type ~= "Button" then error("SetNormalTexture requires a Button", 2) end
+    if type(asset) ~= "string" and type(asset) ~= "number" then
+        error("SetNormalTexture requires a file asset", 2)
+    end
+    self._normalTexture = self._normalTexture or setmetatable({
+        _parent = self, _shown = true,
+    }, TextureMixin)
+    self._normalTexture:SetTexture(asset)
+end
+function FrameMixin:GetNormalTexture(...)
+    AssertNoExtraArguments("GetNormalTexture", ...)
+    if self._type ~= "Button" then error("GetNormalTexture requires a Button", 2) end
+    return self._normalTexture
+end
 function FrameMixin:SetFocus() self._hasFocus = true end
 function FrameMixin:HasFocus() return self._hasFocus == true end
 function FrameMixin:ClearFocus()
@@ -387,18 +572,26 @@ _G._allFrames = {}
 
 local allowedFrameTypes = {
     Button = true,
+    CheckButton = true,
+    DropdownButton = true,
     EditBox = true,
+    EventFrame = true,
     Frame = true,
+    ScrollFrame = true,
     StatusBar = true,
 }
 
 local allowedTemplates = {
+    BackdropTemplate = true,
     DialogBorderTranslucentTemplate = true,
     EditModeSystemSelectionTemplate = true,
     InputBoxTemplate = true,
     MinimalSliderWithSteppersTemplate = true,
+    MinimalScrollBar = true,
+    UICheckButtonTemplate = true,
     UIPanelButtonTemplate = true,
     UIPanelCloseButton = true,
+    WowStyle1DropdownTemplate = true,
 }
 
 function CreateFrame(frameType, name, parent, template, ...)
@@ -429,6 +622,137 @@ function CreateFrame(frameType, name, parent, template, ...)
     end
     _G._allFrames[#_G._allFrames + 1] = frame
     return frame
+end
+
+local function RequireDropdown(frame)
+    if frame._type ~= "DropdownButton" or frame._template ~= "WowStyle1DropdownTemplate" then
+        error("menu method requires a WowStyle1DropdownTemplate DropdownButton", 3)
+    end
+end
+
+function FrameMixin:OverrideText(text, ...)
+    AssertNoExtraArguments("OverrideText", ...)
+    RequireDropdown(self)
+    AssertType(text, "string", "dropdown text")
+    self._overrideText = text
+    self._text = text
+end
+
+function FrameMixin:SetupMenu(generator, ...)
+    AssertNoExtraArguments("SetupMenu", ...)
+    RequireDropdown(self)
+    AssertType(generator, "function", "menu generator")
+    self._menuGenerator = generator
+    if self:IsShown() then self:GenerateMenu() end
+end
+
+function FrameMixin:GenerateMenu(...)
+    AssertNoExtraArguments("GenerateMenu", ...)
+    RequireDropdown(self)
+    if not self._menuGenerator then return end
+    local root = { entries = {} }
+    function root:SetScrollMode(maximumHeight, ...)
+        AssertNoExtraArguments("menu SetScrollMode", ...)
+        AssertType(maximumHeight, "number", "maximum menu height")
+        self.maximumHeight = maximumHeight
+    end
+    function root:CreateRadio(text, isSelected, onSelect, data, ...)
+        AssertNoExtraArguments("CreateRadio", ...)
+        AssertType(text, "string", "radio label")
+        AssertType(isSelected, "function", "radio selection predicate")
+        AssertType(onSelect, "function", "radio responder")
+        local entry = { text = text, isSelected = isSelected, onSelect = onSelect, data = data, initializers = {} }
+        function entry:AddInitializer(initializer, ...)
+            AssertNoExtraArguments("AddInitializer", ...)
+            AssertType(initializer, "function", "menu initializer")
+            self.initializers[#self.initializers + 1] = initializer
+        end
+        self.entries[#self.entries + 1] = entry
+        return entry
+    end
+    self._menuGenerator(self, root)
+    self._menuDescription = root
+    self._text = ""
+    for _, entry in ipairs(root.entries) do
+        if entry.isSelected(entry.data) then self._text = entry.text end
+    end
+    self._text = self._overrideText or self._text
+end
+
+function FrameMixin:CloseMenu(...)
+    AssertNoExtraArguments("CloseMenu", ...)
+    RequireDropdown(self)
+    self._menuOpen = false
+    for _, row in ipairs(self._menuRows or {}) do row:Hide() end
+end
+
+function _G._OpenDropdown(dropdown)
+    RequireDropdown(dropdown)
+    dropdown:GenerateMenu()
+    dropdown._menuOpen = true
+    dropdown._menuRows = dropdown._menuRows or {}
+    for index, entry in ipairs(dropdown._menuDescription.entries) do
+        local row = dropdown._menuRows[index]
+        if not row then
+            row = CreateFrame("Button", nil, dropdown)
+            row.fontString = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            function row:AttachTexture(...)
+                AssertNoExtraArguments("menu AttachTexture", ...)
+                self._previewTexture = self._previewTexture or self:CreateTexture()
+                return self._previewTexture
+            end
+            function row:AttachTemplate(template, ...)
+                AssertNoExtraArguments("menu AttachTemplate", ...)
+                if template ~= "BackdropTemplate" then error("unexpected menu attachment template", 2) end
+                self._previewBorder = self._previewBorder or CreateFrame("Frame", nil, self, template)
+                return self._previewBorder
+            end
+            dropdown._menuRows[index] = row
+        end
+        row:Show()
+        row.fontString:SetText(entry.text)
+        for _, initializer in ipairs(entry.initializers) do
+            local width, height = initializer(row, entry, dropdown._menuDescription)
+            if width ~= nil then row:SetSize(width, height) end
+        end
+    end
+    return dropdown._menuDescription
+end
+
+function _G._SelectDropdown(dropdown, name)
+    RequireDropdown(dropdown)
+    local root = _G._OpenDropdown(dropdown)
+    for _, entry in ipairs(root.entries) do
+        if entry.text == name then
+            entry.onSelect(entry.data)
+            dropdown:GenerateMenu()
+            dropdown:CloseMenu()
+            return
+        end
+    end
+    error("dropdown has no entry named " .. tostring(name), 2)
+end
+
+-- Selected observable ScrollUtil behavior; this cannot prove native widget layout
+ScrollUtil = {}
+function ScrollUtil.InitScrollFrameWithScrollBar(scrollFrame, scrollBar, ...)
+    AssertNoExtraArguments("ScrollUtil.InitScrollFrameWithScrollBar", ...)
+    if scrollFrame._type ~= "ScrollFrame" or scrollBar._template ~= "MinimalScrollBar" then
+        error("unexpected ScrollUtil frame or scrollbar", 2)
+    end
+    scrollFrame._scrollBar = scrollBar
+    scrollFrame.panExtent = 30
+    scrollFrame:SetScript("OnVerticalScroll", function(frame, offset)
+        local range = frame:GetVerticalScrollRange()
+        scrollBar._scrollPercentage = range > 0 and offset / range or 0
+    end)
+    scrollFrame:SetScript("OnScrollRangeChanged", function(frame, _, range)
+        local height = frame:GetHeight()
+        scrollBar._visibleExtentPercentage = height > 0 and height / (range + height) or 0
+    end)
+    scrollFrame:SetScript("OnMouseWheel", function(frame, value)
+        frame:SetVerticalScroll(math.max(0, math.min(frame:GetVerticalScrollRange(), frame:GetVerticalScroll() - value * frame.panExtent)))
+    end)
 end
 
 function _G._RunFrameScript(frame, scriptType, ...)
@@ -462,6 +786,77 @@ end
 UIParent = CreateFrame("Frame", "UIParent")
 UIParent:SetSize(1920, 1080)
 _G._SetFrameCenter(UIParent, 960, 540)
+
+GameTooltip = CreateFrame("Frame", "GameTooltip", UIParent)
+GameTooltip:Hide()
+function GameTooltip:SetOwner(owner, anchor, ...)
+    AssertNoExtraArguments("GameTooltip:SetOwner", ...)
+    if type(owner) ~= "table" or not owner._type then error("tooltip owner must be a frame", 2) end
+    if anchor ~= "ANCHOR_RIGHT" then error("unexpected tooltip anchor: " .. tostring(anchor), 2) end
+    self._owner, self._ownerAnchor = owner, anchor
+end
+function GameTooltip:GetOwner(...)
+    AssertNoExtraArguments("GameTooltip:GetOwner", ...)
+    return self._owner
+end
+function GameTooltip:SetText(text, ...)
+    AssertNoExtraArguments("GameTooltip:SetText", ...)
+    AssertType(text, "string", "tooltip text")
+    self._text = text
+end
+
+ColorPickerFrame = CreateFrame("Frame", "ColorPickerFrame", UIParent)
+ColorPickerFrame:Hide()
+function ColorPickerFrame:SetupColorPickerAndShow(info, ...)
+    AssertNoExtraArguments("SetupColorPickerAndShow", ...)
+    AssertType(info, "table", "color picker info")
+    local fields = { r = true, g = true, b = true, opacity = true, hasOpacity = true,
+        swatchFunc = true, opacityFunc = true, cancelFunc = true, extraInfo = true }
+    for key in pairs(info) do
+        if not fields[key] then error("unexpected color picker field: " .. tostring(key), 2) end
+    end
+    for _, channel in ipairs({ "r", "g", "b" }) do AssertType(info[channel], "number", channel) end
+    AssertType(info.swatchFunc, "function", "color picker swatch callback")
+    if info.hasOpacity ~= nil then AssertType(info.hasOpacity, "boolean", "color picker opacity toggle") end
+    if info.opacity ~= nil then AssertType(info.opacity, "number", "color picker opacity") end
+    if info.opacityFunc ~= nil then AssertType(info.opacityFunc, "function", "color picker opacity callback") end
+    if info.cancelFunc ~= nil then AssertType(info.cancelFunc, "function", "color picker cancel callback") end
+    self._info = info
+    self.previousValues = { r = info.r, g = info.g, b = info.b, a = info.opacity }
+    self._r, self._g, self._b, self._a = info.r, info.g, info.b, info.opacity
+    self.extraInfo = info.extraInfo
+    self.swatchFunc, self.opacityFunc, self.cancelFunc = info.swatchFunc, info.opacityFunc, info.cancelFunc
+    self.swatchFunc()
+    if self.opacityFunc then self.opacityFunc() end
+    self:Show()
+end
+function ColorPickerFrame:GetColorRGB(...)
+    AssertNoExtraArguments("GetColorRGB", ...)
+    return self._r, self._g, self._b
+end
+function ColorPickerFrame:GetColorAlpha(...)
+    AssertNoExtraArguments("GetColorAlpha", ...)
+    return self._a
+end
+function ColorPickerFrame:GetExtraInfo(...)
+    AssertNoExtraArguments("GetExtraInfo", ...)
+    return self.extraInfo
+end
+function _G._SetPickerColor(r, g, b, a)
+    if not ColorPickerFrame:IsShown() then error("color picker is not shown", 2) end
+    ColorPickerFrame._r, ColorPickerFrame._g, ColorPickerFrame._b, ColorPickerFrame._a = r, g, b, a
+    ColorPickerFrame.swatchFunc()
+    if ColorPickerFrame.opacityFunc then ColorPickerFrame.opacityFunc() end
+end
+function _G._CancelPicker()
+    if ColorPickerFrame.cancelFunc then ColorPickerFrame.cancelFunc(ColorPickerFrame.previousValues) end
+    ColorPickerFrame:Hide()
+end
+function _G._AcceptPicker()
+    ColorPickerFrame.swatchFunc()
+    if ColorPickerFrame.opacityFunc then ColorPickerFrame.opacityFunc() end
+    ColorPickerFrame:Hide()
+end
 
 MinimalSliderWithSteppersMixin = {
     Event = { OnValueChanged = "OnValueChanged" },

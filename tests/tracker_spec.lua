@@ -58,9 +58,8 @@ end
 
 describe("Loading, persistence, and lifecycle", function()
     it("loads every runtime file in exact TOC order", function()
-        expect(table.concat(_G._loadedAddonFiles, ",")).to_equal(
-            "src/Config.lua,src/Tracker.lua,src/Bar.lua,src/EditModeSnap.lua,src/EditMode.lua,src/Core.lua"
-        )
+        expect(_G._loadedAddonFiles[1]).to_equal("libs/LibStub/LibStub.lua")
+        expect(_G._loadedAddonFiles[#_G._loadedAddonFiles]).to_equal("src/Core.lua")
         expect(_G._tocMetadata.SavedVariables).to_equal("IronfurTrackerDB")
     end)
 
@@ -68,7 +67,7 @@ describe("Loading, persistence, and lifecycle", function()
         Reset()
 
         local point, relativeTo, relativePoint, offsetX, offsetY = bar:GetPoint()
-        expect(IronfurTrackerDB.schemaVersion).to_equal(1)
+        expect(IronfurTrackerDB.schemaVersion).to_equal(3)
         expect(IronfurTrackerDB.bar.width).to_equal(300)
         expect(IronfurTrackerDB.bar.height).to_equal(18)
         expect(bar:GetWidth()).to_equal(300)
@@ -78,7 +77,9 @@ describe("Loading, persistence, and lifecycle", function()
         expect(relativePoint).to_equal("CENTER")
         expect(offsetX).to_equal(0)
         expect(offsetY).to_equal(0)
-        expect(bar:IsShown()).to_equal(false)
+        expect(bar:IsShown()).to_equal(true)
+        expect(ns.Bar._GetPresentationSnapshot().stackText).to_equal("0")
+        expect(ns.Core._GetUpdateDriver():IsShown()).to_equal(false)
     end)
 
     it("recovers only invalid SavedVariables fields", function()
@@ -95,7 +96,7 @@ describe("Loading, persistence, and lifecycle", function()
         local normalized = ns.Config.Initialize(persisted)
 
         expect(normalized).to_equal(persisted)
-        expect(normalized.schemaVersion).to_equal(1)
+        expect(normalized.schemaVersion).to_equal(3)
         expect(normalized.bar.width).to_equal(640)
         expect(normalized.bar.height).to_equal(18)
         expect(normalized.bar.offsetX).to_equal(25.6)
@@ -110,6 +111,7 @@ describe("Loading, persistence, and lifecycle", function()
         expect(eventFrame._unitEvents.UNIT_SPELLCAST_SUCCEEDED[1]).to_equal("player")
         expect(eventFrame._events.PLAYER_SPECIALIZATION_CHANGED).to_equal(true)
         expect(eventFrame._events.TRAIT_CONFIG_UPDATED).to_equal(true)
+        expect(eventFrame._events.SPELLS_CHANGED).to_equal(true)
         expect(eventFrame._events.UPDATE_SHAPESHIFT_FORM).to_equal(true)
         expect(eventFrame._events.PLAYER_REGEN_DISABLED).to_equal(true)
         expect(eventFrame._events.DISPLAY_SIZE_CHANGED).to_equal(true)
@@ -385,8 +387,8 @@ describe("Placement-only Edit Mode snapping", function()
         { name = "Edit Mode exit", run = function() EditModeManagerFrame:ExitEditMode() end },
         { name = "hidden native selections", run = function() EditModeManagerFrame:HideSystemSelections() end },
         { name = "selection hiding", run = function(selection) selection:Hide() end },
-        { name = "Guardian specialization loss", run = function()
-            _G._stubSpecializationID = 105
+        { name = "Druid eligibility loss", run = function()
+            _G._stubClassToken = "MAGE"
             Fire("PLAYER_SPECIALIZATION_CHANGED", "player")
         end },
         { name = "native system selection", run = function() EditModeManagerFrame:SelectSystem({}) end },
@@ -457,7 +459,9 @@ describe("Ironfur timer behavior", function()
         _G._stubNow = 10.1
         Update()
         expect(ns.Tracker._GetSnapshot().count).to_equal(0)
-        expect(bar:IsShown()).to_equal(false)
+        expect(bar:IsShown()).to_equal(true)
+        expect(ns.Bar._GetPresentationSnapshot().stackText).to_equal("0")
+        expect(bar._value).to_equal(0)
         expect(ns.Core._GetUpdateDriver():IsShown()).to_equal(false)
     end)
 
@@ -470,7 +474,7 @@ describe("Ironfur timer behavior", function()
         expect(bar._value).to_be_close_to(0.5)
     end)
 
-    it("ignores casts outside Guardian Druid and clears on spec loss", function()
+    it("ignores non-Druid casts and retains applications across Druid specs", function()
         Reset()
         _G._stubClassToken = "MAGE"
         Fire("PLAYER_SPECIALIZATION_CHANGED", "player")
@@ -485,8 +489,8 @@ describe("Ironfur timer behavior", function()
 
         _G._stubSpecializationID = 105
         Fire("PLAYER_SPECIALIZATION_CHANGED", "player")
-        expect(ns.Tracker._GetSnapshot().count).to_equal(0)
-        expect(bar:IsShown()).to_equal(false)
+        expect(ns.Tracker._GetSnapshot().count).to_equal(1)
+        expect(bar:IsShown()).to_equal(true)
     end)
 
     it("uses the current Ursoc's Endurance and Guardian of Elune durations", function()
@@ -524,6 +528,96 @@ describe("Ironfur timer behavior", function()
 end)
 
 describe("Bear-only presentation", function()
+    it("shows empty Bear bars and tracks casts for every Druid specialization", function()
+        for _, specID in ipairs({ 102, 103, 104, 105, false }) do
+            Reset()
+            _G._stubSpecializationID = specID or nil
+            Fire("PLAYER_SPECIALIZATION_CHANGED", "player")
+            expect(ns.Core._GetPlayerState().druid).to_equal(true)
+            expect(bar:IsShown()).to_equal(true)
+            expect(ns.Bar._GetPresentationSnapshot().stackText).to_equal("0")
+            expect(ns.Core._GetUpdateDriver():IsShown()).to_equal(false)
+            Cast(IRONFUR_SPELL_ID)
+            expect(ns.Tracker._GetSnapshot().count).to_equal(1)
+            expect(bar._value).to_equal(1)
+
+            _G._stubShapeshiftFormID = nil
+            Fire("UPDATE_SHAPESHIFT_FORM")
+            local state = OpenEditor()
+            expect(state.eligible).to_equal(true)
+            expect(state.panel:IsShown()).to_equal(true)
+            EditModeManagerFrame:ExitEditMode()
+            expect(bar:IsShown()).to_equal(false)
+        end
+    end)
+
+    it("can disable empty visibility without hiding active applications", function()
+        Reset()
+        ns.Config.SetAlwaysVisible(false)
+        Fire("UPDATE_SHAPESHIFT_FORM")
+        expect(bar:IsShown()).to_equal(false)
+        Cast(IRONFUR_SPELL_ID)
+        expect(bar:IsShown()).to_equal(true)
+        _G._stubNow = 7.1
+        Update()
+        expect(bar:IsShown()).to_equal(false)
+        expect(ns.Core._GetUpdateDriver():IsShown()).to_equal(false)
+        ns.Config.SetAlwaysVisible(true)
+        Fire("UPDATE_SHAPESHIFT_FORM")
+        expect(bar:IsShown()).to_equal(true)
+        expect(ns.Bar._GetPresentationSnapshot().stackText).to_equal("0")
+        expect(ns.Core._GetUpdateDriver():IsShown()).to_equal(false)
+    end)
+
+    it("suspends unreadable class state and recovers without inventing applications", function()
+        Reset()
+        Cast(IRONFUR_SPELL_ID)
+        _G._stubClassToken = _G._stubSecretValue
+        Fire("PLAYER_SPECIALIZATION_CHANGED", "player")
+        expect(bar:IsShown()).to_equal(false)
+        Cast(IRONFUR_SPELL_ID)
+        expect(ns.Tracker._GetSnapshot().count).to_equal(1)
+        _G._stubNow = 3.5
+        _G._stubClassToken = "DRUID"
+        Fire("PLAYER_SPECIALIZATION_CHANGED", "player")
+        expect(bar:IsShown()).to_equal(true)
+        expect(bar._value).to_be_close_to(0.5)
+    end)
+
+    it("clears stale estimates at world and death boundaries and tracks new casts", function()
+        for _, event in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_DEAD", "PLAYER_ALIVE" }) do
+            Reset()
+            Cast(IRONFUR_SPELL_ID)
+            Fire(event)
+            expect(ns.Tracker._GetSnapshot().count).to_equal(0)
+            expect(ns.Bar._GetPresentationSnapshot().stackText).to_equal("0")
+            expect(ns.Core._GetUpdateDriver():IsShown()).to_equal(false)
+            Cast(IRONFUR_SPELL_ID)
+            expect(ns.Tracker._GetSnapshot().count).to_equal(1)
+        end
+    end)
+
+    it("refreshes Cat retention and clears pending procs when spell knowledge changes", function()
+        Reset()
+        _G._stubKnownSpells[WILDSHAPE_MASTERY_TALENT_ID] = true
+        _G._stubKnownSpells[GUARDIAN_OF_ELUNE_SPELL_ID] = true
+        Cast(IRONFUR_SPELL_ID)
+        Cast(MANGLE_SPELL_ID)
+        _G._stubShapeshiftFormID = 1
+        Fire("UPDATE_SHAPESHIFT_FORM")
+        expect(ns.Tracker._GetSnapshot().count).to_equal(1)
+        _G._stubKnownSpells[WILDSHAPE_MASTERY_TALENT_ID] = nil
+        Fire("SPELLS_CHANGED")
+        expect(ns.Tracker._GetSnapshot().count).to_equal(0)
+        expect(ns.Tracker._GetSnapshot().guardianOfEluneExpiresAt).to_equal(0)
+        expect(bar:IsShown()).to_equal(false)
+        _G._stubShapeshiftFormID = 5
+        Fire("UPDATE_SHAPESHIFT_FORM")
+        expect(bar:IsShown()).to_equal(true)
+        Cast(IRONFUR_SPELL_ID)
+        expect(ns.Tracker._GetSnapshot().ticks[1].duration).to_equal(7)
+    end)
+
     it("clears applications in a form that cannot retain Ironfur", function()
         Reset()
         Cast(IRONFUR_SPELL_ID)
@@ -615,7 +709,7 @@ describe("Edit Mode companion", function()
         expect(panel:IsShown()).to_equal(false)
     end)
 
-    it("shows a Guardian preview, opens settings, and yields to native selection", function()
+    it("shows a Druid sample, opens settings, and yields to native selection", function()
         Reset()
         local registeredSystems = EditModeManagerFrame.registeredSystemFrames
         local registeredSentinel = registeredSystems[1]
@@ -626,7 +720,8 @@ describe("Edit Mode companion", function()
         expect(state.selection:IsShown()).to_equal(true)
         expect(state.selection:IsMouseEnabled()).to_equal(true)
         expect(state.selection._system:GetSystemName()).to_equal("Ironfur Tracker")
-        expect(ns.Bar._GetPresentationSnapshot().stackText).to_equal("")
+        expect(bar._value > 0 and bar._value < 1).to_equal(true)
+        expect(ns.Tracker._GetSnapshot().count).to_equal(0)
         expect(bar:IsShown()).to_equal(true)
 
         _G._RunFrameScript(state.selection, "OnMouseDown")
@@ -654,13 +749,14 @@ describe("Edit Mode companion", function()
         expect(state.panel:IsShown()).to_equal(false)
 
         EditModeManagerFrame:ExitEditMode()
-        expect(bar:IsShown()).to_equal(false)
+        expect(bar:IsShown()).to_equal(true)
+        expect(ns.Bar._GetPresentationSnapshot().stackText).to_equal("0")
         expect(state.selection:IsShown()).to_equal(false)
     end)
 
-    it("does not expose the editor to a non-Guardian character", function()
+    it("does not expose the editor to a non-Druid character", function()
         Reset()
-        _G._stubSpecializationID = 105
+        _G._stubClassToken = "MAGE"
         Fire("PLAYER_SPECIALIZATION_CHANGED", "player")
         EditModeManagerFrame:EnterEditMode()
 
@@ -710,7 +806,8 @@ describe("Edit Mode companion", function()
         expect(bar._moving).to_equal(false)
         expect(IronfurTrackerDB.bar.offsetX).to_equal(240)
         expect(IronfurTrackerDB.bar.offsetY).to_equal(60)
-        expect(bar:IsShown()).to_equal(false)
+        expect(bar:IsShown()).to_equal(true)
+        expect(ns.Bar._GetPresentationSnapshot().stackText).to_equal("0")
     end)
 
     it("synchronizes width and height through sliders and numeric input", function()

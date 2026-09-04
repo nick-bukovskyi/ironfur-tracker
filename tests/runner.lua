@@ -116,6 +116,8 @@ if not namespace.Core.IsInitialized() then
 end
 
 dofile("tests/tracker_spec.lua")
+dofile("tests/appearance_spec.lua")
+dofile("tests/highlight_spec.lua")
 
 print("")
 print(string.rep("-", 50))

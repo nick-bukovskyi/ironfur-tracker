@@ -4,10 +4,12 @@ local _, ns = ...
 local Bar = {}
 ns.Bar = Bar
 
-local BORDER_SIZE = 1
-local TICK_WIDTH = 2
+local TICK_INSET = 1
+local MINIMUM_INTERIOR = 6
+local PREVIEW_PROGRESS = { 0.25, 0.5, 0.75 }
 
 local frame
+local borderLayer
 local stackText
 local tickLayer
 local tickTextures = {}
@@ -35,9 +37,10 @@ local function HideTickTextures(startIndex)
 end
 
 local function UpdateTickTextureSizes(height)
-    local tickHeight = math.max(1, height - (BORDER_SIZE * 2))
+    local tickWidth = ns.Config.GetNumber("tickWidth")
+    local tickHeight = math.max(1, height - (TICK_INSET * 2))
     for _, texture in ipairs(tickTextures) do
-        texture:SetSize(TICK_WIDTH, tickHeight)
+        texture:SetSize(tickWidth, tickHeight)
     end
 end
 
@@ -48,9 +51,7 @@ local function AcquireTickTexture(index)
     end
 
     texture = tickLayer:CreateTexture(nil, "ARTWORK", nil, 1)
-    texture:SetColorTexture(1, 0.94, 0.72, 1)
-    local _, height = ns.Config.GetBarValues()
-    texture:SetSize(TICK_WIDTH, math.max(1, height - (BORDER_SIZE * 2)))
+    texture:SetColorTexture(ns.Config.GetColor("tickColor"))
 
     if texture.SetSnapToPixelGrid then
         texture:SetSnapToPixelGrid(false)
@@ -73,8 +74,6 @@ function Bar.Initialize()
     frame:SetFrameLevel(10)
     frame:SetMinMaxValues(0, 1)
     frame:SetValue(0)
-    frame:SetStatusBarTexture("Interface\\Buttons\\WHITE8X8")
-    frame:SetStatusBarColor(0.91, 0.38, 0.08, 0.92)
     frame:SetMovable(false)
     frame:SetClampedToScreen(true)
     frame:EnableMouse(false)
@@ -86,46 +85,20 @@ function Bar.Initialize()
 
     tickLayer = CreateFrame("Frame", nil, frame)
     tickLayer:SetAllPoints(frame)
-    tickLayer:SetFrameLevel(frame:GetFrameLevel() + 1)
+    tickLayer:SetFrameLevel(frame:GetFrameLevel() + 2)
 
     local textLayer = CreateFrame("Frame", nil, frame)
     textLayer:SetAllPoints(frame)
-    textLayer:SetFrameLevel(frame:GetFrameLevel() + 2)
+    textLayer:SetFrameLevel(frame:GetFrameLevel() + 3)
 
-    local borderLayer = CreateFrame("Frame", nil, frame)
-    borderLayer:SetAllPoints(frame)
-    borderLayer:SetFrameLevel(frame:GetFrameLevel() + 3)
+    borderLayer = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    borderLayer:SetFrameLevel(frame:GetFrameLevel() + 1)
+    borderLayer:EnableMouse(false)
 
     stackText = textLayer:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
     stackText:SetPoint("CENTER", textLayer, "CENTER", 0, 0)
     stackText:SetTextColor(1, 0.96, 0.86, 1)
     stackText:SetText("")
-
-    local function CreateBorder()
-        local border = borderLayer:CreateTexture(nil, "OVERLAY", nil, 7)
-        border:SetColorTexture(0.01, 0.01, 0.015, 1)
-        return border
-    end
-
-    local topBorder = CreateBorder()
-    topBorder:SetPoint("TOPLEFT", borderLayer, "TOPLEFT", 0, 0)
-    topBorder:SetPoint("TOPRIGHT", borderLayer, "TOPRIGHT", 0, 0)
-    topBorder:SetHeight(BORDER_SIZE)
-
-    local bottomBorder = CreateBorder()
-    bottomBorder:SetPoint("BOTTOMLEFT", borderLayer, "BOTTOMLEFT", 0, 0)
-    bottomBorder:SetPoint("BOTTOMRIGHT", borderLayer, "BOTTOMRIGHT", 0, 0)
-    bottomBorder:SetHeight(BORDER_SIZE)
-
-    local leftBorder = CreateBorder()
-    leftBorder:SetPoint("TOPLEFT", borderLayer, "TOPLEFT", 0, 0)
-    leftBorder:SetPoint("BOTTOMLEFT", borderLayer, "BOTTOMLEFT", 0, 0)
-    leftBorder:SetWidth(BORDER_SIZE)
-
-    local rightBorder = CreateBorder()
-    rightBorder:SetPoint("TOPRIGHT", borderLayer, "TOPRIGHT", 0, 0)
-    rightBorder:SetPoint("BOTTOMRIGHT", borderLayer, "BOTTOMRIGHT", 0, 0)
-    rightBorder:SetWidth(BORDER_SIZE)
 
     Bar.ApplyGeometry()
     return frame
@@ -153,9 +126,33 @@ function Bar.ApplyGeometry()
     _, _, offsetX, offsetY = ns.Config.GetBarValues()
 
     frame:SetSize(width, height)
+    UpdateTickTextureSizes(height)
     frame:ClearAllPoints()
     frame:SetPoint("CENTER", UIParent, "CENTER", offsetX, offsetY)
-    UpdateTickTextureSizes(height)
+    Bar.ApplyAppearance()
+end
+
+function Bar.ApplyAppearance()
+    if not frame then
+        return
+    end
+
+    frame:SetStatusBarTexture(ns.Media.Resolve("statusbar", ns.Config.GetTexture("barTexture")))
+    frame:SetStatusBarColor(ns.Config.GetColor("barColor"))
+
+    local r, g, b, a = ns.Config.GetColor("tickColor")
+    for _, texture in ipairs(tickTextures) do
+        texture:SetColorTexture(r, g, b, a)
+    end
+
+    local width, height = frame:GetWidth(), frame:GetHeight()
+    local minimumDimension = math.min(width, height)
+    local offset = math.max(ns.Config.GetNumber("borderOffset"), (MINIMUM_INTERIOR + 2 - minimumDimension) / 2)
+    local size = math.min(ns.Config.GetNumber("borderSize"), (minimumDimension + offset * 2 - MINIMUM_INTERIOR) / 2)
+    borderLayer:ClearAllPoints()
+    borderLayer:SetPoint("TOPLEFT", frame, "TOPLEFT", -offset, offset)
+    borderLayer:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", offset, -offset)
+    ns.Media.ApplyBorder(borderLayer, ns.Config.GetTexture("borderTexture"), size, ns.Config.GetColor("borderColor"))
 end
 
 function Bar.CaptureCenterOffsets()
@@ -178,26 +175,27 @@ function Bar.CaptureCenterOffsets()
     return offsetX, offsetY
 end
 
+local function RenderTick(index, progress, tickWidth, height, travelWidth)
+    local texture = AcquireTickTexture(index)
+    texture:SetSize(tickWidth, math.max(1, height - TICK_INSET * 2))
+    texture:ClearAllPoints()
+    texture:SetPoint("CENTER", tickLayer, "LEFT", TICK_INSET + tickWidth / 2 + progress * travelWidth, 0)
+    texture:Show()
+end
+
 function Bar.RenderLive(ticks, now)
-    if not frame or #ticks == 0 then
-        Bar.Hide()
+    if not frame then
         return
     end
 
-    local width = frame:GetWidth()
     local height = frame:GetHeight()
-    local tickHeight = math.max(1, height - (BORDER_SIZE * 2))
-    local travelWidth = math.max(0, width - (BORDER_SIZE * 2) - TICK_WIDTH)
+    local tickWidth = ns.Config.GetNumber("tickWidth")
+    local travelWidth = math.max(0, frame:GetWidth() - (TICK_INSET * 2) - tickWidth)
     local maxProgress = 0
 
     for index, tick in ipairs(ticks) do
         local progress = ns.Tracker.CalculateTickProgress(tick.expiresAt, tick.duration, now)
-        local xOffset = BORDER_SIZE + (TICK_WIDTH / 2) + (progress * travelWidth)
-        local texture = AcquireTickTexture(index)
-        texture:SetSize(TICK_WIDTH, tickHeight)
-        texture:ClearAllPoints()
-        texture:SetPoint("CENTER", tickLayer, "LEFT", xOffset, 0)
-        texture:Show()
+        RenderTick(index, progress, tickWidth, height, travelWidth)
 
         if progress > maxProgress then
             maxProgress = progress
@@ -214,9 +212,15 @@ function Bar.RenderPreview()
     if not frame then
         return
     end
-    HideTickTextures()
-    frame:SetValue(0)
-    stackText:SetText("")
+    local height = frame:GetHeight()
+    local tickWidth = ns.Config.GetNumber("tickWidth")
+    local travelWidth = math.max(0, frame:GetWidth() - (TICK_INSET * 2) - tickWidth)
+    for index, progress in ipairs(PREVIEW_PROGRESS) do
+        RenderTick(index, progress, tickWidth, height, travelWidth)
+    end
+    HideTickTextures(#PREVIEW_PROGRESS + 1)
+    frame:SetValue(PREVIEW_PROGRESS[#PREVIEW_PROGRESS])
+    stackText:SetText(#PREVIEW_PROGRESS)
     frame:Show()
 end
 

@@ -5,7 +5,6 @@ local Core = {}
 ns.Core = Core
 
 local DRUID_CLASS_TOKEN = "DRUID"
-local GUARDIAN_SPECIALIZATION_ID = 104
 local CAT_FORM_ID = 1
 local BEAR_FORM_ID = 5
 
@@ -19,7 +18,7 @@ local runtimeEventsRegistered = false
 local updateDriver
 
 local playerState = {
-    guardian = nil,
+    druid = nil,
     formDisposition = FORM_UNKNOWN,
 }
 
@@ -39,31 +38,12 @@ local function ReadKnownSpell(spellID)
     return known and true or false
 end
 
-local function ReadGuardianEligibility()
+local function ReadDruidEligibility()
     local _, classToken = UnitClass("player")
     if IsSecret(classToken) or classToken == nil then
         return nil
     end
-    if classToken ~= DRUID_CLASS_TOKEN then
-        return false
-    end
-
-    if not C_SpecializationInfo
-        or not C_SpecializationInfo.GetSpecialization
-        or not C_SpecializationInfo.GetSpecializationInfo then
-        return nil
-    end
-
-    local specializationIndex = C_SpecializationInfo.GetSpecialization()
-    if IsSecret(specializationIndex) or type(specializationIndex) ~= "number" then
-        return nil
-    end
-
-    local specializationID = C_SpecializationInfo.GetSpecializationInfo(specializationIndex)
-    if IsSecret(specializationID) or type(specializationID) ~= "number" then
-        return nil
-    end
-    return specializationID == GUARDIAN_SPECIALIZATION_ID
+    return classToken == DRUID_CLASS_TOKEN
 end
 
 local function ReadFormDisposition()
@@ -112,9 +92,9 @@ local function RefreshPresentation(now)
 
     if ns.EditMode.IsPreviewActive() then
         ns.Bar.RenderPreview()
-    elseif playerState.guardian == true
+    elseif playerState.druid == true
         and playerState.formDisposition == FORM_BEAR
-        and ns.Tracker.HasActiveTicks() then
+        and (ns.Config.GetAlwaysVisible() or ns.Tracker.HasActiveTicks()) then
         ns.Bar.RenderLive(ns.Tracker.GetTicks(), now)
     else
         ns.Bar.Hide()
@@ -122,28 +102,28 @@ local function RefreshPresentation(now)
 end
 
 local function UpdatePlayerState()
-    local guardian = ReadGuardianEligibility()
+    local druid = ReadDruidEligibility()
     local formDisposition = FORM_UNKNOWN
 
-    if guardian == true then
+    if druid == true then
         formDisposition = ReadFormDisposition()
         if formDisposition == FORM_CLEAR then
             ns.Tracker.Clear()
         end
-    elseif guardian == false then
+    elseif druid == false then
         ns.Tracker.Clear()
     end
 
-    playerState.guardian = guardian
+    playerState.druid = druid
     playerState.formDisposition = formDisposition
-    ns.EditMode.SetEligible(guardian == true)
+    ns.EditMode.SetEligible(druid == true)
 end
 
 local function HandlePlayerSpellcast(spellID)
     if IsSecret(spellID) or type(spellID) ~= "number" then
         return
     end
-    if playerState.guardian ~= true then
+    if playerState.druid ~= true then
         return
     end
 
@@ -181,7 +161,7 @@ local function OnUpdate()
     local now = GetTime()
     local changed = ns.Tracker.Prune(now)
 
-    if playerState.guardian == true
+    if playerState.druid == true
         and playerState.formDisposition == FORM_BEAR
         and ns.Tracker.HasActiveTicks()
         and not ns.EditMode.IsPreviewActive() then
@@ -205,6 +185,7 @@ local function RegisterRuntimeEvents(eventFrame)
     eventFrame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
     eventFrame:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
     eventFrame:RegisterEvent("TRAIT_CONFIG_UPDATED")
+    eventFrame:RegisterEvent("SPELLS_CHANGED")
     eventFrame:RegisterEvent("UPDATE_SHAPESHIFT_FORM")
     eventFrame:RegisterEvent("PLAYER_DEAD")
     eventFrame:RegisterEvent("PLAYER_ALIVE")
@@ -230,6 +211,13 @@ local function Initialize(eventFrame)
     initialized = true
     ns.EditMode.Initialize(RefreshPresentation)
     ns.EditMode.SetCombatLocked(InCombatLockdown and InCombatLockdown() or false)
+    ns.Media.Initialize(function(mediaType, name)
+        local key = mediaType == "statusbar" and "barTexture" or "borderTexture"
+        if ns.Config.GetTexture(key) == name then
+            ns.Bar.ApplyAppearance()
+        end
+        ns.Settings.Refresh()
+    end)
     RegisterRuntimeEvents(eventFrame)
     UpdatePlayerState()
 end
@@ -245,6 +233,9 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
             Initialize(self)
         elseif loadedAddon == "Blizzard_EditMode" and initialized then
             ns.EditMode.TryAttachManager()
+        end
+        if initialized then
+            ns.EditMode.TryAttachOverlayToggle()
         end
         return
     end
@@ -262,9 +253,11 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
     elseif event == "PLAYER_SPECIALIZATION_CHANGED" then
         local unitTarget = ...
         if not IsSecret(unitTarget) and (unitTarget == nil or unitTarget == "player") then
+            ns.Tracker.ClearProcState()
             UpdatePlayerState()
         end
-    elseif event == "ACTIVE_TALENT_GROUP_CHANGED" or event == "TRAIT_CONFIG_UPDATED" then
+    elseif event == "ACTIVE_TALENT_GROUP_CHANGED" or event == "TRAIT_CONFIG_UPDATED"
+        or event == "SPELLS_CHANGED" then
         ns.Tracker.ClearProcState()
         UpdatePlayerState()
     elseif event == "UPDATE_SHAPESHIFT_FORM" then
@@ -279,6 +272,7 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
         UpdatePlayerState()
     elseif event == "DISPLAY_SIZE_CHANGED" or event == "UI_SCALE_CHANGED" then
         ns.Bar.ApplyGeometry()
+        ns.Settings.Refresh()
         RefreshPresentation()
     end
 end)
@@ -290,7 +284,7 @@ end
 
 function Core._GetPlayerState()
     return {
-        guardian = playerState.guardian,
+        druid = playerState.druid,
         formDisposition = playerState.formDisposition,
     }
 end
