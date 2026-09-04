@@ -1,0 +1,27 @@
+# Local build output
+/dist/
+*.zip
+*.log
+*.bak
+*.tmp
+*.luac
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+
+# Editor and operating system files
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local assistant instructions and state
+.codex/
+.claude/
+AGENTS.md
+CLAUDE.md
