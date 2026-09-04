@@ -4,7 +4,7 @@ local _, ns = ...
 local Config = {}
 ns.Config = Config
 
-local CURRENT_SCHEMA_VERSION = 6
+local CURRENT_SCHEMA_VERSION = 7
 local MAXIMUM_STACK_COLORS = 20
 local DEFAULT_FONT_FAMILY = "Friz Quadrata TT"
 local DEFAULT_STACK_COLORS = {
@@ -18,7 +18,7 @@ local DEFAULT_STACK_COLORS = {
 local NUMERIC_DEFINITIONS = {
     {
         key = "width",
-        section = "Size",
+        section = "Bar",
         label = "Bar Width",
         default = 300,
         min = 80,
@@ -27,7 +27,7 @@ local NUMERIC_DEFINITIONS = {
     },
     {
         key = "height",
-        section = "Size",
+        section = "Bar",
         label = "Bar Height",
         default = 18,
         min = 8,
@@ -83,12 +83,13 @@ local NUMERIC_DEFINITIONS = {
 
 local DEFAULT_COLORS = {
     barColor = { r = 0.91, g = 0.38, b = 0.08, a = 0.92 },
+    backdropColor = { r = 0.055, g = 0.065, b = 0.08, a = 0.92 },
     tickColor = { r = 1, g = 1, b = 1, a = 1 },
     textColor = { r = 1, g = 0.96, b = 0.86, a = 1 },
     borderColor = { r = 0.01, g = 0.01, b = 0.015, a = 1 },
 }
 local COLOR_CHANNELS = { "r", "g", "b", "a" }
-local TEXTURE_KEYS = { barTexture = true, borderTexture = true }
+local TEXTURE_KEYS = { barTexture = true, backdropTexture = true, borderTexture = true }
 local DEFAULT_TEXTURE = "Default"
 local CHOICES = {
     barColorMode = {

@@ -22,8 +22,7 @@ stack count.
   by Frenzied Regeneration.
 - Retains active applications in Cat Form with Wildshape Mastery while keeping
   the bar hidden. Returning to Bear Form shows the remaining time.
-- Provides grouped Edit Mode controls for visibility, size, bar, tick,
-  border, and stack-text appearance.
+- Groups Edit Mode controls into Visibility, Font, Bar, Backdrop, Border and Tick.
 - Snaps the dragged bar to Blizzard's grid, screen guides, and eligible visible
   Edit Mode elements when snapping is enabled.
 - Saves size, position, appearance, and visibility account-wide immediately.
@@ -47,13 +46,16 @@ ticks. These samples do not create tracked applications.
   The bar and settings remain visible, and the bar can still be dragged.
   EnhanceQoL's **Hide all windows** eye also controls this highlight when its
   supported Edit Mode library is present. A new Edit Mode session restores highlights.
-- Use either the slider or number field for bar width and height.
-- Click a bordered color swatch to choose bar, tick, or border color with opacity.
+- Use the Bar section's sliders or number fields for width and height.
+- Click a bordered color swatch to choose bar, backdrop, tick, or border color with opacity.
   Changes preview immediately; canceling the picker restores the opening color.
-- Open the bar or border texture selector to see named visual previews.
+- Open the bar, backdrop or border texture selector to see named visual previews.
   **Default** retains the original solid appearance; other choices come from built-in shared media
   or enabled media-provider addons. Missing media temporarily uses Default
   without erasing the saved selection.
+- Use **Backdrop** to customize the color, opacity and texture underneath the
+  fill. It shows through the unfilled part of the bar and remains visible when
+  the bar is empty. Its default dark, solid appearance is unchanged.
 - Use the Tick section to set marker color and width from 1 to 20 with the slider
   or number field. Ticks keep their full inner height regardless of border styling.
 - **Color mode** offers **Class color** (the default Blizzard Druid orange),
@@ -86,8 +88,8 @@ ticks. These samples do not create tracked applications.
 - Use **Reset to Defaults** to restore a 300 by 18 bar at screen center, the
   class-colored fill, solid textures, white ticks at width 2, border size 1,
   offset 0, and enabled empty-bar visibility. Text returns to Friz Quadrata TT,
-  size 14, Drop shadow, centered with no offset, and visible. The unfilled
-  background remains unchanged. Existing custom choices survive upgrades;
+  size 14, Drop shadow, centered with no offset, and visible. The backdrop
+  returns to its original dark color and solid texture. Existing custom choices survive upgrades;
   resetting applies all the new defaults together.
 
 Width accepts whole numbers from 80 to 1000. Height accepts whole numbers from

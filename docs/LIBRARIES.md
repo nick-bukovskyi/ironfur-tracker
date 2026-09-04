@@ -30,6 +30,9 @@ registered media name and resolve through the corresponding shared catalog.
 An unavailable name falls back to the relevant default without replacing the saved choice.
 Registration callbacks refresh matching selected media when it becomes available.
 Catalogs are rebuilt only when requested for settings, not during timer updates.
+Fill and backdrop textures share the `statusbar` catalog but retain independent
+selections. Matching registrations refresh either selected texture. The backdrop
+uses one full-bar `BACKGROUND` texture, tinted separately with its configured RGBA.
 
 Font loading checks the boolean returned by `FontString:SetFont`; a failed
 registered font uses Friz Quadrata TT while retaining the selected name. Where

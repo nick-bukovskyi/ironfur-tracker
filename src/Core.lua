@@ -212,13 +212,16 @@ local function Initialize(eventFrame)
     ns.EditMode.Initialize(RefreshPresentation)
     ns.EditMode.SetCombatLocked(InCombatLockdown and InCombatLockdown() or false)
     ns.Media.Initialize(function(mediaType, name)
-        local selectedName
+        local selected
         if mediaType == "font" then
-            selectedName = ns.Config.GetFontFamily()
+            selected = ns.Config.GetFontFamily() == name
+        elseif mediaType == "statusbar" then
+            selected = ns.Config.GetTexture("barTexture") == name
+                or ns.Config.GetTexture("backdropTexture") == name
         else
-            selectedName = ns.Config.GetTexture(mediaType == "statusbar" and "barTexture" or "borderTexture")
+            selected = ns.Config.GetTexture("borderTexture") == name
         end
-        if selectedName == name then
+        if selected then
             ns.Bar.ApplyAppearance()
         end
         ns.Settings.Refresh()

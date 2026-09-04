@@ -1,11 +1,11 @@
-# Font customization and stack colors validation
+# Backdrop customization and section order validation
 
-- Scope: Font family, styling, visibility and horizontal placement; class, solid and sparse stack-count bar colors; shared owned color-picker transactions.
-- Persistence: Schema 6 preserves valid typography, appearance and sparse rules, restricts rules to 1-20, and retains explicitly empty palettes.
-- Contracts: Build-matched native font objects, menus, color picker and C_ClassColor; TOC loads the picker before settings.
+- Scope: Backdrop color, opacity and texture; Visibility, Font, Bar, Backdrop, Border, Tick section order.
+- Persistence: Schema 7 adds independent backdrop choices while preserving existing settings.
+- Contracts: Existing full-size BACKGROUND texture, SetTexture and SetVertexColor; shared statusbar media discovery.
 - Target: Retail live 12.1.0.69587, interface 120100; TOC version 0.1.0 unchanged.
 - Source: Gethe/wow-ui-source live commit 8ea15b61e45c0ed4eba01439c90757f86eb78d34, version.txt 12.1.0.69587.
-- All 83 off-client tests pass from this complete commit snapshot; its Lua files parse successfully.
+- All 88 off-client tests pass from this complete commit snapshot; its Lua files parse successfully.
 - Tests load runtime files in TOC order with addon varargs and strict stubs. They do not establish client rendering or combat safety.
 
 | Context | Evidence |

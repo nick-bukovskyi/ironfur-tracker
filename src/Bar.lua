@@ -9,6 +9,7 @@ local MINIMUM_INTERIOR = 6
 local DEFAULT_PREVIEW_COUNT = 3
 
 local frame
+local backdrop
 local borderLayer
 local stackText
 local textLayer
@@ -81,9 +82,8 @@ function Bar.Initialize()
     frame:EnableMouse(false)
     frame:Hide()
 
-    local background = frame:CreateTexture(nil, "BACKGROUND")
-    background:SetAllPoints(frame)
-    background:SetColorTexture(0.055, 0.065, 0.08, 0.92)
+    backdrop = frame:CreateTexture(nil, "BACKGROUND")
+    backdrop:SetAllPoints(frame)
 
     tickLayer = CreateFrame("Frame", nil, frame)
     tickLayer:SetAllPoints(frame)
@@ -139,6 +139,8 @@ function Bar.ApplyAppearance()
 
     frame:SetStatusBarTexture(ns.Media.Resolve("statusbar", ns.Config.GetTexture("barTexture")))
     frame:SetStatusBarColor(ns.Config.GetBarColor(displayedStackCount or 0))
+    backdrop:SetTexture(ns.Media.Resolve("statusbar", ns.Config.GetTexture("backdropTexture")))
+    backdrop:SetVertexColor(ns.Config.GetColor("backdropColor"))
 
     ns.Media.ApplyFont(stackText, ns.Config.GetFontFamily(), ns.Config.GetNumber("fontSize"), ns.Config.GetChoice("fontStyle"))
     local position = ns.Config.GetChoice("fontPosition")
@@ -272,6 +274,7 @@ function Bar._GetPresentationSnapshot()
     return {
         stackText = stackText and stackText:GetText() or "",
         textRegion = stackText,
+        backdropRegion = backdrop,
         displayedStackCount = displayedStackCount,
         tickTextures = textures,
     }
