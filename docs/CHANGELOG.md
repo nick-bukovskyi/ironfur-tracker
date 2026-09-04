@@ -1,9 +1,6 @@
 # Changelog
 
-Changes to Ironfur Tracker, newest first. The development milestones below
-record the work toward the first release; they were not separate public releases.
-
-## [0.1.0] - Unreleased
+## [0.1.0] - 2026-09-03
 
 ### Added
 

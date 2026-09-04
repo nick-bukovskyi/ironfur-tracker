@@ -1,0 +1,58 @@
+name: Release
+run-name: Release ${{ github.ref_name }}
+
+on:
+  push:
+    tags:
+      - '**'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate release
+        shell: bash
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+        run: |
+          set -euo pipefail
+          version=$(sed -n 's/^## Version: //p' IronfurTracker.toc | tr -d '\r')
+          project=$(sed -n 's/^## X-Curse-Project-ID: //p' IronfurTracker.toc | tr -d '\r')
+          if [[ "$GITHUB_REF_NAME" != "$version" ]]; then
+            echo '::error::Release tag must match the TOC version exactly'
+            exit 1
+          fi
+          if [[ ! "$project" =~ ^[0-9]+$ ]]; then
+            echo '::error::The TOC must specify a CurseForge project ID'
+            exit 1
+          fi
+          heading=$(grep -F "## [$version] - " docs/CHANGELOG.md | head -n 1 | tr -d '\r')
+          if [[ ! "$heading" =~ \ -\ [0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+            echo '::error::The release changelog must have a publication date'
+            exit 1
+          fi
+          if [[ -z "$CF_API_KEY" ]]; then
+            echo '::error::Add the CF_API_KEY repository secret before releasing'
+            exit 1
+          fi
+
+      - name: Install test runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes lua5.4
+
+      - name: Run tests
+        run: lua5.4 tests/runner.lua
+
+      - name: Package and publish
+        uses: bigwigsmods/packager@v2
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+          GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}

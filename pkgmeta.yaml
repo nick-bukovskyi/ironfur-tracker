@@ -1,0 +1,17 @@
+package-as: IronfurTracker
+
+manual-changelog:
+  filename: docs/CHANGELOG.md
+  markup-type: markdown
+
+license-output: LICENSE
+
+ignore:
+  - README.md
+  - tests
+  - scripts
+  - dist
+  - pkgmeta.yaml
+  - public/screenshots
+  - public/logo.png
+  - public/curseforge-icon.png

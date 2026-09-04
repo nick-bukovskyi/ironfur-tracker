@@ -5,6 +5,7 @@
 ## Author: Sonterix
 ## Version: 0.1.0
 ## SavedVariables: IronfurTrackerDB
+## X-Curse-Project-ID: 1681135
 
 libs\LibStub\LibStub.lua
 libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
