@@ -61,7 +61,15 @@ ticks. These samples do not create tracked applications.
   keeps the fill, stack count and timers running. Marker color and width from 1
   to 20 remain adjustable; ticks keep their full inner height regardless of border styling.
 - **Color mode** offers **Class color** (the default Blizzard Druid orange),
-  **Solid** (a customizable deeper orange), and **By stack count**.
+  **Solid** (a customizable deeper orange), **By stack count**, and **By time remaining**.
+- **By time remaining** follows the remaining percentage shown by the bar fill.
+  **Over half left** is green (above 50%), **Quarter to half left** is yellow
+  (above 25% through 50%), and **Quarter or less left** is red (25% or less).
+  Hover a color swatch to see its exact remaining-duration range.
+  The three colors and their opacity are configurable; the thresholds are fixed.
+  Colors update as time passes, even when the stack count stays unchanged.
+  Overlapping applications use the same rightmost tick as the fill.
+  The empty bar still shows only its backdrop. Switching modes preserves the colors.
 - In **By stack count**, choose a range or enter a **Stack count** from 1 to 20.
   The selector, number field and preview follow the same valid count. **Add** and
   **Remove** act on that visible count. Adding keeps the new count selected;

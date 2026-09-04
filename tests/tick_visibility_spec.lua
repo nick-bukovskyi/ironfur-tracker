@@ -33,7 +33,7 @@ describe("Tick visibility", function()
             showStacks = false, alwaysVisible = false,
         } }
         ns.Config.Initialize(saved)
-        expect(saved.schemaVersion).to_equal(10)
+        expect(saved.schemaVersion).to_equal(11)
         expect(ns.Config.GetShowTicks()).to_equal(true)
         expect(ns.Config.SetShowTicks(false)).to_equal(true)
         ns.Config.Initialize(saved)

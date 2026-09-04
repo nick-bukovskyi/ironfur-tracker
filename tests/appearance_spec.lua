@@ -52,7 +52,7 @@ describe("Appearance persistence and media recovery", function()
             borderColor = { r = 0.01, g = 0.01, b = 0.015, a = 1 },
         } }
         ns.Config.Initialize(saved)
-        expect(saved.schemaVersion).to_equal(10)
+        expect(saved.schemaVersion).to_equal(11)
         for _, key in ipairs({ "barTexture", "backdropTexture", "borderTexture" }) do
             expect(ns.Config.GetTexture(key)).to_equal("Solid")
             expect(ns.Config.SetTexture(key, "Default")).to_equal(false)
@@ -126,7 +126,7 @@ describe("Appearance persistence and media recovery", function()
         }
         ns.Config.Initialize(saved)
         expect(IronfurTrackerDB).to_equal(saved)
-        expect(saved.schemaVersion).to_equal(10)
+        expect(saved.schemaVersion).to_equal(11)
         expect(saved.bar.width).to_equal(450)
         expect(saved.bar.offsetX).to_equal(12.5)
         expect(saved.bar.offsetY).to_equal(-20)
@@ -147,7 +147,7 @@ describe("Appearance persistence and media recovery", function()
                 borderSize = 8, borderOffset = -4, alwaysVisible = false },
         }
         ns.Config.Initialize(saved)
-        expect(saved.schemaVersion).to_equal(10)
+        expect(saved.schemaVersion).to_equal(11)
         expect(saved.bar.tickWidth).to_equal(2)
         ExpectColor("tickColor", 1, 1, 1, 1)
         expect(saved.bar.width).to_equal(510)

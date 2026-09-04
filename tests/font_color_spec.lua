@@ -79,7 +79,7 @@ describe("Font and stack-color persistence", function()
             borderSize = 4, borderOffset = -2, barTexture = "Blizzard", alwaysVisible = false,
         } }
         ns.Config.Initialize(saved)
-        expect(saved.schemaVersion).to_equal(10)
+        expect(saved.schemaVersion).to_equal(11)
         expect(saved.bar.offsetX).to_equal(13.5)
         expect(saved.bar.tickWidth).to_equal(7)
         expect(saved.bar.borderOffset).to_equal(-2)
@@ -110,7 +110,7 @@ describe("Font and stack-color persistence", function()
                 { r = 0.6, g = 0.7, b = 0.8, a = 0.9 } },
         } }
         ns.Config.Initialize(saved)
-        expect(saved.schemaVersion).to_equal(10)
+        expect(saved.schemaVersion).to_equal(11)
         expect(ns.Config.GetFontFamily()).to_equal("Friz Quadrata TT")
         expect(ns.Config.GetChoice("fontStyle")).to_equal("SHADOW")
         expect(ns.Config.GetNumber("fontSize")).to_equal(16)
@@ -130,7 +130,7 @@ describe("Font and stack-color persistence", function()
             fontOffset = -42, fontPosition = "RIGHT", fontSize = 22,
         } }
         ns.Config.Initialize(saved)
-        expect(saved.schemaVersion).to_equal(10)
+        expect(saved.schemaVersion).to_equal(11)
         expect(saved.bar.fontOffset).to_equal(-42)
         expect(saved.bar.fontOffsetY).to_equal(0)
         saved.bar.fontOffsetY = 37
@@ -666,7 +666,7 @@ describe("Bar color by stack count", function()
         ExpectRGBA(bar._statusBarColor, { ns.Config.GetColor("barColor") })
         IronfurTrackerDB.schemaVersion = 5
         ns.Config.Initialize(IronfurTrackerDB)
-        expect(IronfurTrackerDB.schemaVersion).to_equal(10)
+        expect(IronfurTrackerDB.schemaVersion).to_equal(11)
         expect(ns.Config.GetStackColorCount()).to_equal(0)
         Click(palette.addButton)
         expect(ns.Config.HasStackColor(1)).to_equal(true)

@@ -185,10 +185,25 @@ local function AddColorSwatch(row, relativeTo, onClick)
     button:SetScript("OnClick", onClick)
 end
 
-local function CreateColorRow(key, colorMode)
-    local row = CreateRow(content, "Color")
+local function CreateColorRow(key, colorMode, label, tooltip)
+    local row = CreateRow(content, label or "Color")
     row.colorMode = colorMode
+    if label then row.label:SetWidth(180) end
     AddColorSwatch(row, row.label, function() OpenColorPicker(key) end)
+    if tooltip then
+        local function HideTooltip()
+            if GameTooltip:GetOwner() == row.button then GameTooltip:Hide() end
+        end
+        row.button:SetScript("OnEnter", function(button)
+            if not CanEdit() then return end
+            GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
+            GameTooltip:SetText(tooltip)
+            GameTooltip:Show()
+        end)
+        row.button:SetScript("OnLeave", HideTooltip)
+        row.button:HookScript("OnClick", HideTooltip)
+        row:SetScript("OnHide", HideTooltip)
+    end
     colorRows[key] = row
 end
 
@@ -520,6 +535,12 @@ local function BuildControls()
     CreateChoiceRow("barColorMode", "Color mode")
     CreateColorRow("barColor", "SOLID")
     CreateStackColorRows()
+    CreateColorRow("durationHighColor", "DURATION", "Over half left",
+        "More than 50% of the duration remains")
+    CreateColorRow("durationMediumColor", "DURATION", "Quarter to half left",
+        "More than 25% and up to 50% of the duration remains")
+    CreateColorRow("durationLowColor", "DURATION", "Quarter or less left",
+        "25% or less of the duration remains")
     CreateSection("Backdrop")
     CreateTextureRow("backdropTexture", "statusbar")
     CreateColorRow("backdropColor")

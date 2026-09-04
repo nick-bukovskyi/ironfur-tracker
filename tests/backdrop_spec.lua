@@ -38,7 +38,7 @@ describe("Backdrop appearance", function()
             tickColor = { r = 0.2, g = 0.3, b = 0.4, a = 0.5 },
         } }
         ns.Config.Initialize(saved)
-        expect(saved.schemaVersion).to_equal(10)
+        expect(saved.schemaVersion).to_equal(11)
         expect(ns.Config.GetTexture("backdropTexture")).to_equal("Solid")
         ExpectColor({ ns.Config.GetColor("backdropColor") }, DEFAULT_COLOR)
         expect(ns.Config.GetNumber("width")).to_equal(410)

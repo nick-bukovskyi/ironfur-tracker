@@ -445,6 +445,12 @@ local function TriggerFrameCallback(frame, event, ...)
     end
 end
 
+function FrameMixin:GetValue(...)
+    AssertNoExtraArguments("GetValue", ...)
+    if self._type ~= "StatusBar" then error("GetValue requires a StatusBar", 2) end
+    return self._value or 0
+end
+
 function FrameMixin:SetValue(value)
     if self._template == "MinimalSliderWithSteppersTemplate" and self._sliderInitialized then
         if value < self._min then value = self._min end

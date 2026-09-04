@@ -120,6 +120,7 @@ dofile("tests/appearance_spec.lua")
 dofile("tests/tick_visibility_spec.lua")
 dofile("tests/backdrop_spec.lua")
 dofile("tests/font_color_spec.lua")
+dofile("tests/duration_color_spec.lua")
 dofile("tests/highlight_spec.lua")
 dofile("tests/eqol_dialog_spec.lua")
 

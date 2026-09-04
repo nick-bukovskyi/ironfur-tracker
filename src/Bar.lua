@@ -138,7 +138,7 @@ function Bar.ApplyAppearance()
     end
 
     frame:SetStatusBarTexture(ns.Media.Resolve("statusbar", ns.Config.GetTexture("barTexture")))
-    frame:SetStatusBarColor(ns.Config.GetBarColor(displayedStackCount or 0))
+    frame:SetStatusBarColor(ns.Config.GetBarColor(displayedStackCount or 0, frame:GetValue()))
     backdrop:SetTexture(ns.Media.Resolve("statusbar", ns.Config.GetTexture("backdropTexture")))
     backdrop:SetVertexColor(ns.Config.GetColor("backdropColor"))
 
@@ -195,10 +195,14 @@ local function RenderTick(index, progress, tickWidth, height, travelWidth)
     texture:Show()
 end
 
-local function RenderStackCount(count)
-    if displayedStackCount ~= count then
+local function RenderFillAndCount(count, progress)
+    frame:SetValue(progress)
+    local countChanged = displayedStackCount ~= count
+    if countChanged or ns.Config.GetChoice("barColorMode") == "DURATION" then
+        frame:SetStatusBarColor(ns.Config.GetBarColor(count, progress))
+    end
+    if countChanged then
         displayedStackCount = count
-        frame:SetStatusBarColor(ns.Config.GetBarColor(count))
         stackText:SetText(count)
     end
     stackText:SetShown(ns.Config.GetShowStacks())
@@ -224,8 +228,7 @@ function Bar.RenderLive(ticks, now)
     end
 
     HideTickTextures(#ticks + 1)
-    frame:SetValue(maxProgress)
-    RenderStackCount(#ticks)
+    RenderFillAndCount(#ticks, maxProgress)
     frame:Show()
 end
 
@@ -242,8 +245,7 @@ function Bar.RenderPreview(count)
         RenderTick(index, index / (count + 1), tickWidth, height, travelWidth)
     end
     HideTickTextures(count + 1)
-    frame:SetValue(count / (count + 1))
-    RenderStackCount(count)
+    RenderFillAndCount(count, count / (count + 1))
     frame:Show()
 end
 

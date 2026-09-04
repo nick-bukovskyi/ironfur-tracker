@@ -4,7 +4,7 @@ local _, ns = ...
 local Config = {}
 ns.Config = Config
 
-local CURRENT_SCHEMA_VERSION = 10
+local CURRENT_SCHEMA_VERSION = 11
 local MAXIMUM_STACK_COLORS = 20
 local DEFAULT_FONT_FAMILY = "Friz Quadrata TT"
 local DEFAULT_STACK_COLORS = {
@@ -92,6 +92,9 @@ local NUMERIC_DEFINITIONS = {
 
 local DEFAULT_COLORS = {
     barColor = { r = 0.91, g = 0.38, b = 0.08, a = 0.92 },
+    durationHighColor = { r = 0.20, g = 0.80, b = 0.30, a = 1 },
+    durationMediumColor = { r = 1, g = 0.80, b = 0.10, a = 1 },
+    durationLowColor = { r = 0.90, g = 0.16, b = 0.14, a = 1 },
     backdropColor = { r = 0, g = 0, b = 0, a = 0.8 },
     tickColor = { r = 1, g = 1, b = 1, a = 1 },
     textColor = { r = 1, g = 1, b = 1, a = 1 },
@@ -105,6 +108,7 @@ local CHOICES = {
         { value = "CLASS", label = "Class color" },
         { value = "SOLID", label = "Solid" },
         { value = "STACKS", label = "By stack count" },
+        { value = "DURATION", label = "By time remaining" },
     },
     fontPosition = {
         { value = "CENTER", label = "Center" },
@@ -430,7 +434,7 @@ function Config.RemoveStackColor(index)
     return true
 end
 
-function Config.GetBarColor(stackCount)
+function Config.GetBarColor(stackCount, progress)
     local mode = Config.GetChoice("barColorMode")
     if mode == "CLASS" then
         local color = C_ClassColor.GetClassColor("DRUID")
@@ -442,6 +446,13 @@ function Config.GetBarColor(stackCount)
         and stackCount >= 1 and stackCount == math.floor(stackCount) then
         local color = InheritedStackColor(stackCount)
         return color.r, color.g, color.b, color.a
+    elseif mode == "DURATION" and IsFiniteNumber(progress) and progress >= 0 and progress <= 1 then
+        if progress > 0.5 then
+            return Config.GetColor("durationHighColor")
+        elseif progress > 0.25 then
+            return Config.GetColor("durationMediumColor")
+        end
+        return Config.GetColor("durationLowColor")
     end
     return Config.GetColor("barColor")
 end

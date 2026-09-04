@@ -25,6 +25,10 @@ All notable changes to Ironfur Tracker will be documented in this file.
 
 ### Added
 
+- Bar color can now follow time remaining: green above 50%, yellow above 25%
+  through 50%, and red at 25% or less. Customize each color and opacity while
+  keeping these thresholds fixed. Plain-language labels describe how much time
+  is left, and hovering a swatch shows its exact range.
 - Show ticks now controls marker visibility in the live bar and Edit Mode preview.
   It is enabled by default; hiding markers keeps the fill and stack count updating.
 - The bar backdrop now has color, opacity and texture controls for the area
