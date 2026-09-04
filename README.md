@@ -1,7 +1,5 @@
 # Ironfur Tracker
 
-<img src="public/logo.png" alt="Ironfur Tracker logo" width="256">
-
 Keep an eye on your Ironfur stacks without losing sight of the fight. Ironfur
 Tracker brings your stacks and remaining time together in one customizable bar,
 with a moving marker for each cast so you can see when applications are about
@@ -36,55 +34,6 @@ Choose the color mode that helps you read your Ironfur:
 - **Live preview:** See appearance changes in Edit Mode, even outside Bear Form.
 - **Saved settings:** Your position and appearance are shared across characters. Reset to Defaults gives you a fresh starting point whenever you want one.
 
-## Screenshots
-
-**Default appearance**
-
-![Default Ironfur Tracker bar](public/screenshots/default.png)
-
-**WoW-style appearance**
-
-![Ironfur Tracker with a green fill and textured border](public/screenshots/wow-like.png)
-
-**Settings**
-
-<img src="public/screenshots/settings.png" alt="Ironfur Tracker appearance settings" width="400">
-
-## Getting started
-
-1. Log in on a Druid and open **Edit Mode** from the game menu while out of combat.
-2. Click the **Ironfur Tracker** preview to open its settings.
-3. Drag the bar where you want it, then customize **Visibility**, **Font**, **Bar**, **Backdrop**, **Border**, and **Tick**.
-4. Close Edit Mode and enter Bear Form to use the tracker.
-
-Changes save automatically. Ironfur Tracker uses one account-wide setup,
-independent of Blizzard's Edit Mode layout profiles. No slash commands or
-separate settings addon are needed.
-
-## Requirements
-
-- World of Warcraft Retail **12.1.0**.
-- A Druid character to display and customize the bar.
-
-Required libraries are included. Extra media addons are optional.
-
-## Installation
-
-1. Download the addon ZIP and extract it into `World of Warcraft/_retail_/Interface/AddOns/`.
-2. Check that the folder contains `AddOns/IronfurTracker/IronfurTracker.toc`.
-3. Start World of Warcraft and enable **Ironfur Tracker** in the AddOns list.
-
-## Tracking note
-
-Ironfur Tracker estimates each application's remaining time from your successful
-casts and supported talents. It cannot recover casts made before you log in,
-reload the UI, or enter a new area through a loading screen. If Ironfur is
-already active then, the display can temporarily show fewer stacks, including
-zero. New casts are tracked immediately; once those older applications expire,
-the display catches up.
-
 ## License and credits
 
-[MIT](LICENSE). See [bundled libraries](docs/LIBRARIES.md) for third-party credits.
-
-See the [changelog](docs/CHANGELOG.md) for what's new.
+[MIT](LICENSE)
