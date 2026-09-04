@@ -91,7 +91,7 @@ local function RefreshPresentation(now)
     UpdateDriverState()
 
     if ns.EditMode.IsPreviewActive() then
-        ns.Bar.RenderPreview()
+        ns.Bar.RenderPreview(ns.Settings.GetPreviewStackCount())
     elseif playerState.druid == true
         and playerState.formDisposition == FORM_BEAR
         and (ns.Config.GetAlwaysVisible() or ns.Tracker.HasActiveTicks()) then
@@ -212,8 +212,13 @@ local function Initialize(eventFrame)
     ns.EditMode.Initialize(RefreshPresentation)
     ns.EditMode.SetCombatLocked(InCombatLockdown and InCombatLockdown() or false)
     ns.Media.Initialize(function(mediaType, name)
-        local key = mediaType == "statusbar" and "barTexture" or "borderTexture"
-        if ns.Config.GetTexture(key) == name then
+        local selectedName
+        if mediaType == "font" then
+            selectedName = ns.Config.GetFontFamily()
+        else
+            selectedName = ns.Config.GetTexture(mediaType == "statusbar" and "barTexture" or "borderTexture")
+        end
+        if selectedName == name then
             ns.Bar.ApplyAppearance()
         end
         ns.Settings.Refresh()

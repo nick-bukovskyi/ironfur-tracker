@@ -6,9 +6,10 @@ All notable changes to Ironfur Tracker will be documented in this file.
 
 ### Fixed
 
+- Stack-color Add and Remove now act on the visible count, keeping the number
+  field, selector and preview synchronized without jumping after an action.
 - Selecting Ironfur Tracker now closes an open EnhanceQoL Edit Mode settings
   window instead of leaving the previous frame's controls alongside it.
-
 - Tick markers now span the bar's inner height regardless of border size, offset,
   or texture.
 - EnhanceQoL's Hide all windows toggle now also hides Ironfur Tracker's Edit Mode
@@ -18,9 +19,17 @@ All notable changes to Ironfur Tracker will be documented in this file.
 
 ### Added
 
+- Stack text can now be hidden, aligned left/center/right, shifted horizontally,
+  and customized with color, opacity, font family, size, and shadow/outline styles.
+- Bar color can now use Blizzard's Druid class color or follow editable stack
+  ranges. Add or remove individual starting counts; skipped counts inherit the
+  previous color, and the highest range covers larger counts. Counts below the
+  first rule or an empty rule list use the saved Solid color.
+- Selecting a stack color previews that count on the bar; font selectors preview
+  each available family.
 - The settings panel now has an eye button to hide or show the bar's Edit Mode
   highlight while keeping its preview and settings available.
-- Edit Mode settings now have Visibility, Size, Bar, Tick, and Border sections.
+- Edit Mode settings now have Visibility, Size, Bar, Tick, Border, and Font sections.
 - Bar, tick, and border colors can now be customized, including opacity.
 - Tick width can now be changed with a slider or number input.
 - Bar and border texture selectors now show previews of default and available
@@ -40,6 +49,15 @@ All notable changes to Ironfur Tracker will be documented in this file.
 
 ### Changed
 
+- Stack-color starting counts now range from 1 to 20. Any rule can be removed,
+  including the first or last; upgrades retain in-range rules and discard rules
+  above 20. Empty saved lists remain empty until colors are added or reset.
+- Settings now put dimensions and placement before texture and color controls
+  within each section.
+- New settings use Druid class color, white ticks, and Friz Quadrata TT at size
+  14 with Drop shadow. Font and text-style selectors use explicit names.
+- Stack colors start red at 1, yellow at 2, green at 3, cyan at 4, and purple
+  at 5 or more. Existing customized colors and sizes are preserved on upgrade.
 - Click a compact bordered color swatch to pick a color.
 - Texture previews now appear only inside the opened selectors.
 - Edit Mode now uses a full-width Reset to Defaults button and more compact

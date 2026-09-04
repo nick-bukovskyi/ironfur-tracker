@@ -11,7 +11,10 @@ local panel, scrollFrame, scrollBar, content, resetButton, alwaysVisible, eyeBut
 local onStateChanged, onClose, isCombatLocked
 local controlsRefreshing = false
 local numericRows, colorRows, textureRows = {}, {}, {}
-local colorSession
+local choiceRows, dropdowns, layoutItems = {}, {}, {}
+local stackColors, fontFamily, showStacks
+local selectedStack = 3
+local laidOutColorMode
 local eyeTooltipShown = false
 
 local EYE_TEXTURE = "Interface\\LFGFrame\\LFG-Eye"
@@ -85,6 +88,9 @@ local function ClearInputFocus(cancel)
             row.input:ClearFocus()
         end
     end
+    if stackColors and stackColors.input and stackColors.input:HasFocus() then
+        stackColors.input:ClearFocus()
+    end
 end
 
 local function RefreshColor(key)
@@ -92,54 +98,22 @@ local function RefreshColor(key)
     if row then row.swatch:SetColorTexture(ns.Config.GetColor(key)) end
 end
 
-local function CancelColorPreview()
-    local session = colorSession
-    if not session then return end
-    colorSession = nil
-    ns.Config.SetColor(session.key, session.r, session.g, session.b, session.a)
-    ns.Bar.ApplyAppearance()
-    RefreshColor(session.key)
-    if ColorPickerFrame:GetExtraInfo() == session then ColorPickerFrame:Hide() end
-end
-
 local function CloseTransientControls()
-    CancelColorPreview()
-    for _, row in pairs(textureRows) do row.dropdown:CloseMenu() end
+    ns.SettingsColorPicker.Cancel()
+    for _, dropdown in ipairs(dropdowns) do dropdown:CloseMenu() end
 end
 
-local function OpenColorPicker(key)
+local function OpenColorPicker(key, index)
     if not CanEdit() then return end
     ClearInputFocus(false)
     CloseTransientControls()
-    local r, g, b, a = ns.Config.GetColor(key)
-    local session = { key = key, r = r, g = g, b = b, a = a, initializing = true }
-    colorSession = session
-    local function ApplyPreview()
-        if colorSession ~= session or session.initializing
-            or ColorPickerFrame:GetExtraInfo() ~= session or not CanEdit() then return end
-        local nr, ng, nb = ColorPickerFrame:GetColorRGB()
-        if ns.Config.SetColor(key, nr, ng, nb, ColorPickerFrame:GetColorAlpha()) then
-            ns.Bar.ApplyAppearance()
-            RefreshColor(key)
-        end
-    end
-    ColorPickerFrame:SetupColorPickerAndShow({
-        r = r, g = g, b = b, opacity = a, hasOpacity = true, extraInfo = session,
-        swatchFunc = ApplyPreview,
-        opacityFunc = ApplyPreview,
-        cancelFunc = function()
-            if colorSession == session and ColorPickerFrame:GetExtraInfo() == session then
-                CancelColorPreview()
-            end
-        end,
-    })
-    session.initializing = false
+    ns.SettingsColorPicker.Open(key, index)
 end
 
-local function CreateRow(parent, labelText, top)
+local function CreateRow(parent, labelText)
     local row = CreateFrame("Frame", nil, parent)
     row:SetSize(ROW_WIDTH, ROW_HEIGHT)
-    row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -top)
+    layoutItems[#layoutItems + 1] = row
     if labelText then
         row.label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
         row.label:SetPoint("LEFT", row, "LEFT", 0, 0)
@@ -150,8 +124,8 @@ local function CreateRow(parent, labelText, top)
     return row
 end
 
-local function CreateNumericRow(definition, top)
-    local row = CreateRow(content, definition.label, top)
+local function CreateNumericRow(definition)
+    local row = CreateRow(content, definition.label)
     row.definition = definition
     local slider = CreateFrame("Frame", nil, row, "MinimalSliderWithSteppersTemplate")
     slider:SetPoint("LEFT", row.label, "RIGHT", 5, 0)
@@ -193,10 +167,9 @@ local function CreateNumericRow(definition, top)
     numericRows[definition.key] = row
 end
 
-local function CreateColorRow(key, top)
-    local row = CreateRow(content, "Color", top)
+local function AddColorSwatch(row, relativeTo, onClick)
     local button = CreateFrame("Button", nil, row)
-    button:SetPoint("LEFT", row.label, "RIGHT", 5, 0)
+    button:SetPoint("LEFT", relativeTo, "RIGHT", 5, 0)
     button:SetSize(22, 22)
     local border = button:CreateTexture(nil, "BACKGROUND")
     border:SetAllPoints(button)
@@ -205,7 +178,13 @@ local function CreateColorRow(key, top)
     swatch:SetPoint("TOPLEFT", button, "TOPLEFT", 1, -1)
     swatch:SetSize(20, 20)
     row.button, row.swatch = button, swatch
-    button:SetScript("OnClick", function() OpenColorPicker(key) end)
+    button:SetScript("OnClick", onClick)
+end
+
+local function CreateColorRow(key, colorMode)
+    local row = CreateRow(content, "Color")
+    row.colorMode = colorMode
+    AddColorSwatch(row, row.label, function() OpenColorPicker(key) end)
     colorRows[key] = row
 end
 
@@ -214,13 +193,19 @@ local function RefreshTexture(row)
     row.dropdown:OverrideText(name)
 end
 
-local function CreateTextureRow(key, mediaType, top)
-    local row = CreateRow(content, "Texture", top)
-    row.key = key
+local function AddDropdown(row)
     local dropdown = CreateFrame("DropdownButton", nil, row, "WowStyle1DropdownTemplate")
     dropdown:SetPoint("LEFT", row.label, "RIGHT", 5, 0)
     dropdown:SetWidth(185)
     row.dropdown = dropdown
+    dropdowns[#dropdowns + 1] = dropdown
+    return dropdown
+end
+
+local function CreateTextureRow(key, mediaType)
+    local row = CreateRow(content, "Texture")
+    row.key = key
+    local dropdown = AddDropdown(row)
     dropdown:SetupMenu(function(_, rootDescription)
         rootDescription:SetScrollMode(300)
         for _, option in ipairs(ns.Media.GetOptions(mediaType)) do
@@ -255,57 +240,297 @@ local function CreateTextureRow(key, mediaType, top)
     textureRows[key] = row
 end
 
-local function CreateSection(label, top)
-    if top > 0 then
-        local divider = content:CreateTexture(nil, "ARTWORK")
-        divider:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -top)
-        divider:SetSize(ROW_WIDTH, 1)
-        divider:SetColorTexture(1, 1, 1, 0.3)
-        top = top + 10
-    end
-    local title = content:CreateFontString(nil, "OVERLAY", "GameFontNormalMed3")
-    title:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -top)
-    title:SetText(label)
-    return top + 25
+local function ApplySettingsChange()
+    ns.Bar.ApplyAppearance()
+    Settings.Refresh()
+    NotifyStateChanged()
 end
 
-local function AddNumericSection(section, top)
-    for _, definition in ipairs(ns.Config.GetNumericDefinitions()) do
-        if definition.section == section then
-            CreateNumericRow(definition, top)
-            top = top + ROW_HEIGHT + 2
+local function CreateChoiceRow(key, label)
+    local row = CreateRow(content, label)
+    local dropdown = AddDropdown(row)
+    dropdown:SetupMenu(function(_, rootDescription)
+        for _, option in ipairs(ns.Config.GetChoiceOptions(key)) do
+            local value = option.value
+            rootDescription:CreateRadio(option.label,
+                function() return ns.Config.GetChoice(key) == value end,
+                function()
+                    if not CanEdit() then return end
+                    ClearInputFocus(false)
+                    CloseTransientControls()
+                    if ns.Config.SetChoice(key, value) then ApplySettingsChange() end
+                end)
+        end
+    end)
+    choiceRows[key] = row
+end
+
+local function StackCountLabel(count, nextCount)
+    if not nextCount then return tostring(count) .. "+ stacks" end
+    if nextCount > count + 1 then return tostring(count) .. "-" .. tostring(nextCount - 1) .. " stacks" end
+    return tostring(count) .. (count == 1 and " stack" or " stacks")
+end
+
+local function ReadStackCount()
+    local text = stackColors.input:GetText()
+    if issecretvalue(text) then return nil end
+    local count = tonumber(text)
+    if not count or count ~= math.floor(count) or count < 1
+        or count > ns.Config.GetMaximumStackColors() then return nil end
+    return count
+end
+
+local function SyncStackInput()
+    stackColors.updatingInput = true
+    stackColors.input:SetNumber(selectedStack)
+    stackColors.updatingInput = false
+end
+
+local function RefreshStackColors()
+    local thresholds = ns.Config.GetStackThresholds()
+    local exists = ns.Config.HasStackColor(selectedStack)
+    local valid = ReadStackCount() == selectedStack
+    if not exists then
+        stackColors.dropdown:OverrideText(StackCountLabel(selectedStack, selectedStack + 1) .. " (inherited)")
+    end
+    for index, count in ipairs(thresholds) do
+        if count == selectedStack then
+            stackColors.dropdown:OverrideText(StackCountLabel(count, thresholds[index + 1]))
+            break
         end
     end
-    return top
+    if exists then
+        stackColors.swatch:SetColorTexture(ns.Config.GetStackColor(selectedStack))
+    else
+        stackColors.swatch:SetColorTexture(ns.Config.GetBarColor(selectedStack))
+    end
+    stackColors.addButton:SetEnabled(valid and not exists)
+    stackColors.removeButton:SetEnabled(valid and exists)
+    stackColors.button:SetEnabled(valid and exists)
+    stackColors.removeButton:SetText(valid and ("Remove " .. selectedStack) or "Remove")
+    if not valid then
+        stackColors.hint:SetText("Enter a whole number from 1 to " .. ns.Config.GetMaximumStackColors())
+    elseif exists then
+        stackColors.hint:SetText("Color applies until the next threshold")
+    elseif not thresholds[1] or selectedStack < thresholds[1] then
+        stackColors.hint:SetText("No earlier rule: uses the Solid color")
+    else
+        stackColors.hint:SetText("Inherited color; Add to customize")
+    end
+end
+
+local function OnStackInputChanged()
+    if stackColors.updatingInput then return end
+    local count = ReadStackCount()
+    if count ~= selectedStack then CloseTransientControls() end
+    if count then selectedStack = count end
+    RefreshStackColors()
+    NotifyStateChanged()
+end
+
+local function CreateStackColorRows()
+    stackColors = CreateRow(content, "Stack color")
+    stackColors.colorMode = "STACKS"
+    local dropdown = AddDropdown(stackColors)
+    AddColorSwatch(stackColors, dropdown, function()
+        local count = ReadStackCount()
+        if count and ns.Config.HasStackColor(count) then OpenColorPicker("stackColor", count) end
+    end)
+    dropdown:SetupMenu(function(_, rootDescription)
+        rootDescription:SetScrollMode(300)
+        local thresholds = ns.Config.GetStackThresholds()
+        for index, count in ipairs(thresholds) do
+            local stackIndex = count
+            local item = rootDescription:CreateRadio(StackCountLabel(count, thresholds[index + 1]),
+                function() return selectedStack == stackIndex end,
+                function()
+                    if not CanEdit() then return end
+                    CloseTransientControls()
+                    selectedStack = stackIndex
+                    SyncStackInput()
+                    ApplySettingsChange()
+                end)
+            item:AddInitializer(function(button)
+                local swatch = button:AttachTexture()
+                swatch:SetSize(20, 20)
+                swatch:SetPoint("RIGHT", button, "RIGHT", -4, 0)
+                swatch:SetColorTexture(ns.Config.GetStackColor(stackIndex))
+                return 185, 24
+            end)
+        end
+    end)
+    local actions = CreateRow(content, "Stack count")
+    actions.colorMode = "STACKS"
+    local input = CreateFrame("EditBox", nil, actions, "InputBoxTemplate")
+    input:SetPoint("LEFT", actions.label, "RIGHT", 5, 0)
+    input:SetSize(INPUT_WIDTH, 22)
+    input:SetAutoFocus(false)
+    input:SetNumeric(true)
+    input:SetMaxLetters(#tostring(ns.Config.GetMaximumStackColors()))
+    input:SetJustifyH("CENTER")
+    stackColors.input = input
+    local addButton = CreateFrame("Button", nil, actions, "UIPanelButtonTemplate")
+    addButton:SetPoint("LEFT", input, "RIGHT", 8, 0)
+    addButton:SetSize(58, 26)
+    addButton:SetText("Add")
+    local function AddThreshold()
+        if not CanEdit() then return end
+        local count = ReadStackCount()
+        if not count or ns.Config.HasStackColor(count) then
+            input:ClearFocus()
+            return
+        end
+        CloseTransientControls()
+        ClearInputFocus(false)
+        local added = ns.Config.AddStackColor(count)
+        if added then
+            selectedStack = added
+            SyncStackInput()
+            ApplySettingsChange()
+        end
+    end
+    addButton:SetScript("OnClick", AddThreshold)
+    input:SetScript("OnEnterPressed", AddThreshold)
+    input:SetScript("OnEditFocusLost", EditBox_ClearHighlight)
+    input:SetScript("OnEscapePressed", function()
+        SyncStackInput()
+        RefreshStackColors()
+        input:ClearFocus()
+    end)
+    local removeButton = CreateFrame("Button", nil, actions, "UIPanelButtonTemplate")
+    removeButton:SetPoint("LEFT", addButton, "RIGHT", 8, 0)
+    removeButton:SetSize(140, 26)
+    removeButton:SetText("Remove")
+    removeButton:SetScript("OnClick", function()
+        if not CanEdit() then return end
+        local count = ReadStackCount()
+        if not count or not ns.Config.HasStackColor(count) then return end
+        CloseTransientControls()
+        ClearInputFocus(false)
+        if ns.Config.RemoveStackColor(count) then
+            selectedStack = count
+            SyncStackInput()
+            ApplySettingsChange()
+        end
+    end)
+    stackColors.addButton, stackColors.removeButton = addButton, removeButton
+    local hint = CreateRow(content)
+    hint.colorMode = "STACKS"
+    hint:SetHeight(22)
+    local text = hint:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    text:SetPoint("LEFT", hint, "LEFT", LABEL_WIDTH + 5, 0)
+    stackColors.hint = text
+    SyncStackInput()
+    RefreshStackColors()
+    input:SetScript("OnTextChanged", OnStackInputChanged)
+end
+
+local function CreateFontFamilyRow()
+    fontFamily = CreateRow(content, "Font")
+    local dropdown = AddDropdown(fontFamily)
+    dropdown:SetupMenu(function(_, rootDescription)
+        rootDescription:SetScrollMode(300)
+        for _, option in ipairs(ns.Media.GetOptions("font")) do
+            local name = option.name
+            local item = rootDescription:CreateRadio(name,
+                function() return ns.Config.GetFontFamily() == name end,
+                function()
+                    if not CanEdit() then return end
+                    CloseTransientControls()
+                    if ns.Config.SetFontFamily(name) then ApplySettingsChange() end
+                end)
+            item:AddInitializer(function(button)
+                button.fontString:SetFontObject(ns.Media.GetFontPreviewObject(name))
+                button.fontString:SetWidth(270)
+                return 300, 24
+            end)
+        end
+    end)
+end
+
+local function CreateSection(label)
+    local section = CreateFrame("Frame", nil, content)
+    local first = #layoutItems == 0
+    section:SetSize(ROW_WIDTH, first and 25 or 35)
+    section.gapBefore = first and 0 or 8
+    if not first then
+        local divider = section:CreateTexture(nil, "ARTWORK")
+        divider:SetPoint("TOPLEFT", section, "TOPLEFT", 0, 0)
+        divider:SetSize(ROW_WIDTH, 1)
+        divider:SetColorTexture(1, 1, 1, 0.3)
+    end
+    local title = section:CreateFontString(nil, "OVERLAY", "GameFontNormalMed3")
+    title:SetPoint("TOPLEFT", section, "TOPLEFT", 0, first and 0 or -10)
+    title:SetText(label)
+    layoutItems[#layoutItems + 1] = section
+end
+
+local function AddNumericSection(section, key)
+    for _, definition in ipairs(ns.Config.GetNumericDefinitions()) do
+        if definition.section == section and (not key or definition.key == key) then CreateNumericRow(definition) end
+    end
+end
+
+local function CreateCheckbox(label, getter, setter)
+    local row = CreateRow(content)
+    local checkbox = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
+    checkbox:SetPoint("LEFT", row, "LEFT", 0, 0)
+    checkbox:SetSize(30, 30)
+    local text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+    text:SetPoint("LEFT", checkbox, "RIGHT", 5, 0)
+    text:SetText(label)
+    checkbox:SetChecked(getter())
+    checkbox:SetScript("OnClick", function(button)
+        if not CanEdit() then return end
+        setter(button:GetChecked() and true or false)
+        ApplySettingsChange()
+    end)
+    return checkbox
 end
 
 local function BuildControls()
-    local top = CreateSection("Visibility", 0)
-    local visibilityRow = CreateRow(content, nil, top)
-    alwaysVisible = CreateFrame("CheckButton", nil, visibilityRow, "UICheckButtonTemplate")
-    alwaysVisible:SetPoint("LEFT", visibilityRow, "LEFT", 0, 0)
-    alwaysVisible:SetSize(30, 30)
-    local label = visibilityRow:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
-    label:SetPoint("LEFT", alwaysVisible, "RIGHT", 5, 0)
-    label:SetText("Always show in Bear Form")
-    alwaysVisible:SetScript("OnClick", function(checkbox)
-        if not CanEdit() then return end
-        ns.Config.SetAlwaysVisible(checkbox:GetChecked() and true or false)
-        NotifyStateChanged()
-    end)
-    top = CreateSection("Size", top + ROW_HEIGHT + 8)
-    top = AddNumericSection("Size", top)
-    top = CreateSection("Bar", top + 8)
-    CreateColorRow("barColor", top)
-    CreateTextureRow("barTexture", "statusbar", top + ROW_HEIGHT + 2)
-    top = CreateSection("Tick", top + 2 * (ROW_HEIGHT + 2) + 8)
-    CreateColorRow("tickColor", top)
-    top = AddNumericSection("Tick", top + ROW_HEIGHT + 2)
-    top = CreateSection("Border", top + 8)
-    CreateColorRow("borderColor", top)
-    CreateTextureRow("borderTexture", "border", top + ROW_HEIGHT + 2)
-    top = AddNumericSection("Border", top + 2 * (ROW_HEIGHT + 2))
+    CreateSection("Visibility")
+    alwaysVisible = CreateCheckbox("Always show in Bear Form", ns.Config.GetAlwaysVisible, ns.Config.SetAlwaysVisible)
+    CreateSection("Size")
+    AddNumericSection("Size")
+    CreateSection("Bar")
+    CreateTextureRow("barTexture", "statusbar")
+    CreateChoiceRow("barColorMode", "Color mode")
+    CreateColorRow("barColor", "SOLID")
+    CreateStackColorRows()
+    CreateSection("Tick")
+    AddNumericSection("Tick")
+    CreateColorRow("tickColor")
+    CreateSection("Border")
+    AddNumericSection("Border")
+    CreateTextureRow("borderTexture", "border")
+    CreateColorRow("borderColor")
+    CreateSection("Font")
+    showStacks = CreateCheckbox("Show stacks", ns.Config.GetShowStacks, ns.Config.SetShowStacks)
+    CreateFontFamilyRow()
+    AddNumericSection("Font", "fontSize")
+    CreateChoiceRow("fontPosition", "Position")
+    AddNumericSection("Font", "fontOffset")
+    CreateChoiceRow("fontStyle", "Text style")
+    CreateColorRow("textColor")
+end
+
+local function ReflowControls()
+    local mode = ns.Config.GetChoice("barColorMode")
+    if laidOutColorMode == mode then return end
+    local top = 0
+    for _, item in ipairs(layoutItems) do
+        local shown = not item.colorMode or item.colorMode == mode
+        item:SetShown(shown)
+        if shown then
+            top = top + (item.gapBefore or 0)
+            item:ClearAllPoints()
+            item:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -top)
+            top = top + item:GetHeight() + 2
+        end
+    end
     content:SetHeight(top)
+    laidOutColorMode = mode
 end
 
 local function UpdatePanelSize()
@@ -385,6 +610,8 @@ local function EnsurePanel()
         CloseTransientControls()
         ClearInputFocus(true)
         ns.Config.ResetBar()
+        selectedStack = ns.Config.HasStackColor(3) and 3 or 1
+        SyncStackInput()
         ns.Bar.ApplyGeometry()
         Settings.Refresh()
         NotifyStateChanged()
@@ -395,16 +622,17 @@ local function EnsurePanel()
         ClearInputFocus(false)
         panel:StopMovingOrSizing()
         panel:SetUserPlaced(false)
-    end)
-    ColorPickerFrame:HookScript("OnHide", function()
-        if colorSession and ColorPickerFrame:GetExtraInfo() == colorSession then
-            colorSession = nil
-        end
+        NotifyStateChanged()
     end)
 end
 
 function Settings.Initialize(stateChanged, closed, combatCheck)
     onStateChanged, onClose, isCombatLocked = stateChanged, closed, combatCheck
+    ns.SettingsColorPicker.Initialize(CanEdit, function(key, index)
+        ns.Bar.ApplyAppearance()
+        if index then RefreshStackColors() else RefreshColor(key) end
+        NotifyStateChanged()
+    end)
 end
 
 function Settings.Refresh()
@@ -414,8 +642,18 @@ function Settings.Refresh()
     end
     for key in pairs(colorRows) do RefreshColor(key) end
     for _, row in pairs(textureRows) do RefreshTexture(row) end
+    for key, row in pairs(choiceRows) do
+        local selected = ns.Config.GetChoice(key)
+        for _, option in ipairs(ns.Config.GetChoiceOptions(key)) do
+            if option.value == selected then row.dropdown:OverrideText(option.label) end
+        end
+    end
+    fontFamily.dropdown:OverrideText(ns.Config.GetFontFamily())
+    showStacks:SetChecked(ns.Config.GetShowStacks())
+    RefreshStackColors()
     alwaysVisible:SetChecked(ns.Config.GetAlwaysVisible())
     RefreshEyeButton()
+    ReflowControls()
     UpdatePanelSize()
 end
 
@@ -423,16 +661,30 @@ function Settings.Show()
     EnsurePanel()
     panel:Show()
     Settings.Refresh()
+    NotifyStateChanged()
 end
 
 function Settings.Hide()
     if panel then panel:Hide() end
 end
 
+function Settings.GetPreviewStackCount()
+    if panel and panel:IsShown() and ns.Config.GetChoice("barColorMode") == "STACKS" then
+        return selectedStack
+    end
+    return nil
+end
+
 function Settings._GetTestState()
     return {
         panel = panel, rows = numericRows, colors = colorRows, textures = textureRows,
         alwaysVisible = alwaysVisible, resetButton = resetButton, scrollFrame = scrollFrame,
-        colorSession = colorSession, eyeButton = eyeButton,
+        colorSession = ns.SettingsColorPicker._GetSession(), eyeButton = eyeButton,
+        choices = choiceRows, fontFamily = fontFamily, showStacks = showStacks,
+        stackColors = stackColors and {
+            dropdown = stackColors.dropdown, button = stackColors.button, swatch = stackColors.swatch,
+            addButton = stackColors.addButton, removeButton = stackColors.removeButton,
+            selectedIndex = selectedStack, input = stackColors.input, hint = stackColors.hint,
+        },
     }
 end

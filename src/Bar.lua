@@ -6,11 +6,13 @@ ns.Bar = Bar
 
 local TICK_INSET = 1
 local MINIMUM_INTERIOR = 6
-local PREVIEW_PROGRESS = { 0.25, 0.5, 0.75 }
+local DEFAULT_PREVIEW_COUNT = 3
 
 local frame
 local borderLayer
 local stackText
+local textLayer
+local displayedStackCount
 local tickLayer
 local tickTextures = {}
 
@@ -87,7 +89,7 @@ function Bar.Initialize()
     tickLayer:SetAllPoints(frame)
     tickLayer:SetFrameLevel(frame:GetFrameLevel() + 2)
 
-    local textLayer = CreateFrame("Frame", nil, frame)
+    textLayer = CreateFrame("Frame", nil, frame)
     textLayer:SetAllPoints(frame)
     textLayer:SetFrameLevel(frame:GetFrameLevel() + 3)
 
@@ -96,8 +98,6 @@ function Bar.Initialize()
     borderLayer:EnableMouse(false)
 
     stackText = textLayer:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
-    stackText:SetPoint("CENTER", textLayer, "CENTER", 0, 0)
-    stackText:SetTextColor(1, 0.96, 0.86, 1)
     stackText:SetText("")
 
     Bar.ApplyGeometry()
@@ -138,7 +138,15 @@ function Bar.ApplyAppearance()
     end
 
     frame:SetStatusBarTexture(ns.Media.Resolve("statusbar", ns.Config.GetTexture("barTexture")))
-    frame:SetStatusBarColor(ns.Config.GetColor("barColor"))
+    frame:SetStatusBarColor(ns.Config.GetBarColor(displayedStackCount or 0))
+
+    ns.Media.ApplyFont(stackText, ns.Config.GetFontFamily(), ns.Config.GetNumber("fontSize"), ns.Config.GetChoice("fontStyle"))
+    local position = ns.Config.GetChoice("fontPosition")
+    stackText:ClearAllPoints()
+    stackText:SetPoint(position, textLayer, position, ns.Config.GetNumber("fontOffset"), 0)
+    stackText:SetJustifyH(position)
+    stackText:SetTextColor(ns.Config.GetColor("textColor"))
+    stackText:SetShown(ns.Config.GetShowStacks())
 
     local r, g, b, a = ns.Config.GetColor("tickColor")
     for _, texture in ipairs(tickTextures) do
@@ -183,6 +191,15 @@ local function RenderTick(index, progress, tickWidth, height, travelWidth)
     texture:Show()
 end
 
+local function RenderStackCount(count)
+    if displayedStackCount ~= count then
+        displayedStackCount = count
+        frame:SetStatusBarColor(ns.Config.GetBarColor(count))
+        stackText:SetText(count)
+    end
+    stackText:SetShown(ns.Config.GetShowStacks())
+end
+
 function Bar.RenderLive(ticks, now)
     if not frame then
         return
@@ -204,23 +221,25 @@ function Bar.RenderLive(ticks, now)
 
     HideTickTextures(#ticks + 1)
     frame:SetValue(maxProgress)
-    stackText:SetText(#ticks)
+    RenderStackCount(#ticks)
     frame:Show()
 end
 
-function Bar.RenderPreview()
+function Bar.RenderPreview(count)
     if not frame then
         return
     end
+    if not IsUsableNumber(count) or count ~= math.floor(count) or count < 1
+        or count > ns.Config.GetMaximumStackColors() then count = DEFAULT_PREVIEW_COUNT end
     local height = frame:GetHeight()
     local tickWidth = ns.Config.GetNumber("tickWidth")
     local travelWidth = math.max(0, frame:GetWidth() - (TICK_INSET * 2) - tickWidth)
-    for index, progress in ipairs(PREVIEW_PROGRESS) do
-        RenderTick(index, progress, tickWidth, height, travelWidth)
+    for index = 1, count do
+        RenderTick(index, index / (count + 1), tickWidth, height, travelWidth)
     end
-    HideTickTextures(#PREVIEW_PROGRESS + 1)
-    frame:SetValue(PREVIEW_PROGRESS[#PREVIEW_PROGRESS])
-    stackText:SetText(#PREVIEW_PROGRESS)
+    HideTickTextures(count + 1)
+    frame:SetValue(count / (count + 1))
+    RenderStackCount(count)
     frame:Show()
 end
 
@@ -231,6 +250,7 @@ function Bar.Hide()
     HideTickTextures()
     frame:SetValue(0)
     stackText:SetText("")
+    displayedStackCount = nil
     frame:Hide()
 end
 
@@ -251,6 +271,8 @@ function Bar._GetPresentationSnapshot()
 
     return {
         stackText = stackText and stackText:GetText() or "",
+        textRegion = stackText,
+        displayedStackCount = displayedStackCount,
         tickTextures = textures,
     }
 end

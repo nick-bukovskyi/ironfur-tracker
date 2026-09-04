@@ -24,12 +24,22 @@ before LibSharedMedia; all three load before `src/Media.lua`.
 
 ## Integration
 
-Only `statusbar` and `border` media are offered. The add-on's `Default` option
-always resolves to its original solid texture. Other selections store their
+`statusbar`, `border`, and `font` media are offered. Texture menus retain a `Default` option for the original solid texture. Font menus contain named families only,
+with Friz Quadrata TT selected for new settings. Selections store their
 registered media name and resolve through the corresponding shared catalog.
-An unavailable name falls back to solid without replacing the saved choice.
+An unavailable name falls back to the relevant default without replacing the saved choice.
 Registration callbacks refresh matching selected media when it becomes available.
 Catalogs are rebuilt only when requested for settings, not during timer updates.
+
+Font loading checks the boolean returned by `FontString:SetFont`; a failed
+registered font uses Friz Quadrata TT while retaining the selected name. Where
+that family is absent from the locale's catalog, the native family is the fallback. Menu
+font strings prohibit direct `SetFont`, so family previews use cached, prefixed
+`CreateFont` objects and `SetFontObject`. A single hidden font string validates
+the selected file before copying its resolved font/shadow to the preview object;
+`Font:SetFont` itself has no return value. Matching font registrations refresh
+both the selected family and cached menu preview. Text styles use the supported
+native font/shadow properties, not a separate shared-media category.
 
 LibSharedMedia v12.1.0 validates new registrations using
 `C_UIFileAsset.IsKnownFile`. The exact target's

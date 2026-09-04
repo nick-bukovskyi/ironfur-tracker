@@ -61,6 +61,25 @@ C_UIFileAsset = {
     end,
 }
 
+-- The public class-color result is RGB; ColorMixin:GetRGBA does not invent alpha
+local druidClassColor = { r = 1, g = 0.49, b = 0.04 }
+function druidClassColor:GetRGB(...)
+    AssertNoExtraArguments("ColorMixin:GetRGB", ...)
+    return self.r, self.g, self.b
+end
+function druidClassColor:GetRGBA(...)
+    AssertNoExtraArguments("ColorMixin:GetRGBA", ...)
+    return self.r, self.g, self.b, self.a
+end
+_G._stubClassColorAvailable = true
+C_ClassColor = {
+    GetClassColor = function(className, ...)
+        AssertNoExtraArguments("C_ClassColor.GetClassColor", ...)
+        if className ~= "DRUID" then error("unexpected class-color fixture", 2) end
+        if _G._stubClassColorAvailable then return druidClassColor end
+    end,
+}
+
 local TextureMixin = {}
 TextureMixin.__index = TextureMixin
 
@@ -111,6 +130,11 @@ local FontStringMixin = {}
 FontStringMixin.__index = FontStringMixin
 
 function FontStringMixin:SetPoint(...) self._point = { ... } end
+function FontStringMixin:ClearAllPoints(...) AssertNoExtraArguments("FontString:ClearAllPoints", ...); self._point = nil end
+function FontStringMixin:GetPoint(...)
+    AssertNoExtraArguments("FontString:GetPoint", ...)
+    if self._point then return unpackValues(self._point) end
+end
 function FontStringMixin:SetTextColor(...) self._color = { ... } end
 function FontStringMixin:SetText(value) self._text = tostring(value or "") end
 function FontStringMixin:GetText() return self._text or "" end
@@ -120,6 +144,98 @@ function FontStringMixin:SetJustifyH(justify) self._justifyH = justify end
 function FontStringMixin:Show() self._shown = true end
 function FontStringMixin:Hide() self._shown = false end
 function FontStringMixin:IsShown() return self._shown == true end
+function FontStringMixin:SetShown(shown, ...)
+    AssertNoExtraArguments("FontString:SetShown", ...)
+    AssertType(shown, "boolean", "font string shown")
+    self._shown = shown
+end
+
+_G._stubFontSetResults = {}
+for _, name in ipairs({ "2002.TTF", "2002B.TTF", "ARHei.TTF", "ARKai_C.TTF", "ARKai_T.TTF",
+    "ARIALN.TTF", "FRIZQT__.TTF", "K_Pagetext.TTF", "MORPHEUS_CYR.TTF", "NIM_____.ttf", "SKURRI_CYR.TTF" }) do
+    _G._stubFontSetResults["Fonts\\" .. name] = true
+end
+
+function FontStringMixin:GetFont(...)
+    AssertNoExtraArguments("GetFont", ...)
+    if self._fontObject and not self._fontFile then return self._fontObject:GetFont() end
+    return self._fontFile, self._fontHeight or 0, self._fontFlags or ""
+end
+function FontStringMixin:SetFont(asset, height, flags, ...)
+    AssertNoExtraArguments("SetFont", ...)
+    if self._menuOwned then error("Blizzard menu compositor forbids FontString:SetFont", 2) end
+    if type(asset) ~= "string" and type(asset) ~= "number" then error("SetFont requires a font asset", 2) end
+    if type(height) ~= "number" or height <= 0 or height ~= height or height == math.huge then
+        error("SetFont requires a valid font height", 2)
+    end
+    if flags ~= nil and flags ~= "" and flags ~= "OUTLINE" and flags ~= "THICKOUTLINE" then
+        error("unexpected font flags: " .. tostring(flags), 2)
+    end
+    local success = _G._stubFontSetResults[asset]
+    if success == nil then error("font asset has no test fixture: " .. tostring(asset), 2) end
+    if success then self._fontFile, self._fontHeight, self._fontFlags = asset, height, flags or "" end
+    return success
+end
+function FontStringMixin:GetShadowColor(...)
+    AssertNoExtraArguments("GetShadowColor", ...)
+    if self._fontObject and not self._shadowColor then return self._fontObject:GetShadowColor() end
+    return unpackValues(self._shadowColor or { 0, 0, 0, 1 })
+end
+function FontStringMixin:SetShadowColor(r, g, b, a, ...)
+    AssertNoExtraArguments("SetShadowColor", ...)
+    AssertType(r, "number", "shadow red")
+    AssertType(g, "number", "shadow green")
+    AssertType(b, "number", "shadow blue")
+    if a ~= nil then AssertType(a, "number", "shadow alpha") end
+    self._shadowColor = { r, g, b, a or 1 }
+end
+function FontStringMixin:GetShadowOffset(...)
+    AssertNoExtraArguments("GetShadowOffset", ...)
+    if self._fontObject and not self._shadowOffset then return self._fontObject:GetShadowOffset() end
+    return unpackValues(self._shadowOffset or { 0, 0 })
+end
+function FontStringMixin:SetShadowOffset(x, y, ...)
+    AssertNoExtraArguments("SetShadowOffset", ...)
+    AssertType(x, "number", "shadow offset x")
+    AssertType(y, "number", "shadow offset y")
+    self._shadowOffset = { x, y }
+end
+
+-- SimpleFont:SetFont has no return value, unlike SimpleFontString:SetFont
+local FontObjectMixin = {
+    GetFont = FontStringMixin.GetFont,
+    GetShadowColor = FontStringMixin.GetShadowColor,
+    SetShadowColor = FontStringMixin.SetShadowColor,
+    GetShadowOffset = FontStringMixin.GetShadowOffset,
+    SetShadowOffset = FontStringMixin.SetShadowOffset,
+}
+FontObjectMixin.__index = FontObjectMixin
+function FontObjectMixin:SetFont(asset, height, flags, ...)
+    AssertType(asset, "string", "font object file name")
+    AssertType(flags, "string", "font object flags")
+    FontStringMixin.SetFont(self, asset, height, flags, ...)
+end
+function CreateFont(name, ...)
+    AssertNoExtraArguments("CreateFont", ...)
+    AssertType(name, "string", "font object name")
+    if name == "" or _G[name] ~= nil then error("font object name must be new and nonempty", 2) end
+    local font = setmetatable({ _name = name }, FontObjectMixin)
+    _G[name] = font
+    return font
+end
+function FontStringMixin:SetFontObject(font, ...)
+    AssertNoExtraArguments("FontString:SetFontObject", ...)
+    if type(font) == "string" then font = _G[font] end
+    if getmetatable(font) ~= FontObjectMixin then error("SetFontObject requires a known Font object", 2) end
+    self._fontObject = font
+    self._fontFile, self._fontHeight, self._fontFlags = nil, nil, nil
+    self._shadowColor, self._shadowOffset = nil, nil
+end
+
+GameFontHighlightLarge = setmetatable({
+    _fontFile = "Fonts\\FRIZQT__.TTF", _fontHeight = 16, _fontFlags = "",
+    _shadowColor = { 0, 0, 0, 1 }, _shadowOffset = { 1, -1 },
+}, FontObjectMixin)
 
 local FrameMixin = {}
 FrameMixin.__index = FrameMixin
@@ -422,6 +538,7 @@ function FrameMixin:CreateFontString(name, layer, template)
         GameFontHighlight = true,
         GameFontHighlightLarge = true,
         GameFontHighlightMedium = true,
+        GameFontHighlightSmall = true,
         GameFontNormalMed3 = true,
         GameFontNormalLarge = true,
     }
@@ -436,6 +553,11 @@ function FrameMixin:CreateFontString(name, layer, template)
         _shown = true,
         _text = "",
     }, FontStringMixin)
+    if template == "GameFontHighlightLarge" then
+        fontString._fontFile, fontString._fontHeight, fontString._fontFlags = GameFontHighlightLarge:GetFont()
+        fontString._shadowColor = { GameFontHighlightLarge:GetShadowColor() }
+        fontString._shadowOffset = { GameFontHighlightLarge:GetShadowOffset() }
+    end
     self._fontStrings = self._fontStrings or {}
     self._fontStrings[#self._fontStrings + 1] = fontString
     return fontString
@@ -493,7 +615,21 @@ end
 function FrameMixin:StopMovingOrSizing() self._moving = false end
 function FrameMixin:SetUserPlaced(value) self._userPlaced = value and true or false end
 
-function FrameMixin:SetText(value) self._text = tostring(value or "") end
+function FrameMixin:SetText(value)
+    local text = tostring(value or "")
+    local changed = self._text ~= text
+    self._text = text
+    if changed and self._type == "EditBox" then
+        local callback = self:GetScript("OnTextChanged")
+        if callback then callback(self, false) end
+    end
+end
+function FrameMixin:SetEnabled(enabled, ...)
+    AssertNoExtraArguments("SetEnabled", ...)
+    if self._type ~= "Button" then error("SetEnabled fixture requires a Button", 2) end
+    AssertType(enabled, "boolean", "button enabled")
+    self._enabled = enabled
+end
 function FrameMixin:GetText() return self._text or "" end
 function FrameMixin:SetNumber(value) self:SetText(value) end
 function FrameMixin:GetNumber() return tonumber(self:GetText()) or 0 end
@@ -696,6 +832,7 @@ function _G._OpenDropdown(dropdown)
         if not row then
             row = CreateFrame("Button", nil, dropdown)
             row.fontString = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            row.fontString._menuOwned = true
             function row:AttachTexture(...)
                 AssertNoExtraArguments("menu AttachTexture", ...)
                 self._previewTexture = self._previewTexture or self:CreateTexture()
@@ -1220,6 +1357,7 @@ function _G._ResetWowStubs()
     MagnetismPreviewLineMixin = _G._stubDefaultPreviewLineMixin
     _G._stubNow = 0
     _G._stubClassToken = "DRUID"
+    _G._stubClassColorAvailable = true
     _G._stubClassID = 11
     _G._stubSpecializationIndex = 3
     _G._stubSpecializationID = 104

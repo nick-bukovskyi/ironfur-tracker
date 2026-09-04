@@ -23,7 +23,7 @@ stack count.
 - Retains active applications in Cat Form with Wildshape Mastery while keeping
   the bar hidden. Returning to Bear Form shows the remaining time.
 - Provides grouped Edit Mode controls for visibility, size, bar, tick,
-  and border appearance.
+  border, and stack-text appearance.
 - Snaps the dragged bar to Blizzard's grid, screen guides, and eligible visible
   Edit Mode elements when snapping is enabled.
 - Saves size, position, appearance, and visibility account-wide immediately.
@@ -56,19 +56,46 @@ ticks. These samples do not create tracked applications.
   without erasing the saved selection.
 - Use the Tick section to set marker color and width from 1 to 20 with the slider
   or number field. Ticks keep their full inner height regardless of border styling.
+- **Color mode** offers **Class color** (the default Blizzard Druid orange),
+  **Solid** (a customizable deeper orange), and **By stack count**.
+- In **By stack count**, choose a range or enter a **Stack count** from 1 to 20.
+  The selector, number field and preview follow the same valid count. **Add** and
+  **Remove** act on that visible count and keep it selected afterward. For an
+  existing color, Remove and the swatch are enabled; for a missing color, Add is
+  enabled and the preview shows its inherited color until you add it. Invalid or
+  blank input stays visible and disables both actions without changing colors.
+  Each color continues until the next configured count: keeping 1 and 3 makes
+  2 inherit 1. Added colors copy the inherited color, and the highest range
+  covers all higher counts. You can remove any rule, including 1 or the last one.
+  Counts below the first rule, or an empty rule list, use your **Solid** color.
+  Initial colors are red at 1, yellow at 2, green at 3, cyan at 4, and purple at 5+.
+  Switching modes preserves your solid color and stack colors. The empty bar has
+  no fill. Upgrades retain rules from 1 to 20 and discard rules above 20; an empty
+  saved list stays empty. Reset restores the five initial colors.
 - Adjust border size from 1 to 20 and offset from -20 to 20 with either a slider
   or number field. Positive offset expands outward; negative offset moves inward.
   These are UI units, like bar width and height. Very small bars limit the visible
   thickness and inset to keep an interior; the saved choice is retained.
+- Use **Font** to show or hide the stack number, choose left/center/right placement,
+  and adjust its horizontal offset. Positive offsets move right; negative offsets
+  move left. Choose text color/opacity, a font family, size, and shadow/outline style.
+  Font names preview their appearance inside the **Font** selector. New settings
+  use **Friz Quadrata TT**, size **14**, and **Drop shadow**. Unavailable fonts use
+  Friz Quadrata TT, or the locale's native font if unavailable, until their provider
+  returns. Hiding the number does not change stack colors.
 - Use **Reset to Defaults** to restore a 300 by 18 bar at screen center, the
-  original colors and solid textures, tick width 2, border size 1, offset 0,
-  and enabled empty-bar visibility. The unfilled background remains unchanged.
+  class-colored fill, solid textures, white ticks at width 2, border size 1,
+  offset 0, and enabled empty-bar visibility. Text returns to Friz Quadrata TT,
+  size 14, Drop shadow, centered with no offset, and visible. The unfilled
+  background remains unchanged. Existing custom choices survive upgrades;
+  resetting applies all the new defaults together.
 
 Width accepts whole numbers from 80 to 1000. Height accepts whole numbers from
 8 to 128. These account-wide choices are owned by Ironfur Tracker and are not
 part of Blizzard Edit Mode layout profiles, imports, exports, Save, or Revert.
 Color pickers and texture menus close when editing ends or combat starts.
 The settings content scrolls when the available screen height requires it.
+Text size accepts 8-64 UI units and horizontal offset accepts -500 to 500.
 
 Snapping sets the bar's position; it does not attach the bar to another element.
 Moving that element afterward leaves Ironfur Tracker where it was placed.
