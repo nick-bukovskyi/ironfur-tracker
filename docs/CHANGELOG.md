@@ -6,6 +6,7 @@ All notable changes to Ironfur Tracker will be documented in this file.
 
 ### Fixed
 
+- The settings window now fits its controls with matching left and right margins.
 - Stack-color Add and Remove now act on the visible count, keeping the number
   field, selector and preview synchronized without jumping after an action.
 - Selecting Ironfur Tracker now closes an open EnhanceQoL Edit Mode settings
@@ -19,6 +20,8 @@ All notable changes to Ironfur Tracker will be documented in this file.
 
 ### Added
 
+- Show ticks now controls marker visibility in the live bar and Edit Mode preview.
+  It is enabled by default; hiding markers keeps the fill and stack count updating.
 - The bar backdrop now has color, opacity and texture controls for the area
   underneath the fill.
 - Stack text can now be hidden, aligned left/center/right, shifted horizontally,

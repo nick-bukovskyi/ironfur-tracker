@@ -117,6 +117,7 @@ end
 
 dofile("tests/tracker_spec.lua")
 dofile("tests/appearance_spec.lua")
+dofile("tests/tick_visibility_spec.lua")
 dofile("tests/backdrop_spec.lua")
 dofile("tests/font_color_spec.lua")
 dofile("tests/highlight_spec.lua")

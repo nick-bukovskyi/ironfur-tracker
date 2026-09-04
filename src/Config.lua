@@ -4,7 +4,7 @@ local _, ns = ...
 local Config = {}
 ns.Config = Config
 
-local CURRENT_SCHEMA_VERSION = 8
+local CURRENT_SCHEMA_VERSION = 9
 local MAXIMUM_STACK_COLORS = 20
 local DEFAULT_FONT_FAMILY = "Friz Quadrata TT"
 local DEFAULT_STACK_COLORS = {
@@ -189,6 +189,9 @@ local function NormalizeAppearance(bar, reset, legacyDense)
     if reset or issecretvalue(bar.showStacks) or type(bar.showStacks) ~= "boolean" then
         bar.showStacks = true
     end
+    if reset or issecretvalue(bar.showTicks) or type(bar.showTicks) ~= "boolean" then
+        bar.showTicks = true
+    end
     if reset or not IsMediaName(bar.fontFamily) or bar.fontFamily == "Default" then
         bar.fontFamily = DEFAULT_FONT_FAMILY
     end
@@ -308,6 +311,16 @@ end
 function Config.SetShowStacks(value)
     if not database or issecretvalue(value) or type(value) ~= "boolean" then return false end
     database.bar.showStacks = value
+    return true
+end
+
+function Config.GetShowTicks()
+    return database and database.bar.showTicks or false
+end
+
+function Config.SetShowTicks(value)
+    if not database or issecretvalue(value) or type(value) ~= "boolean" then return false end
+    database.bar.showTicks = value
     return true
 end
 

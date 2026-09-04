@@ -4,15 +4,18 @@ local _, ns = ...
 local Settings = {}
 ns.Settings = Settings
 
-local PANEL_WIDTH, ROW_WIDTH, ROW_HEIGHT = 450, 390, 32
-local PANEL_TOP, PANEL_BOTTOM, RESET_HEIGHT = 45, 25, 28
 local LABEL_WIDTH, SLIDER_WIDTH, INPUT_WIDTH = 100, 200, 48
+local CONTROL_GAP, INPUT_GAP = 5, 10
+local ROW_WIDTH = LABEL_WIDTH + CONTROL_GAP + SLIDER_WIDTH + INPUT_GAP + INPUT_WIDTH
+local PANEL_PADDING, ROW_HEIGHT = 20, 32
+local PANEL_WIDTH = ROW_WIDTH + PANEL_PADDING * 2
+local PANEL_TOP, PANEL_BOTTOM, RESET_HEIGHT = 45, 25, 28
 local panel, scrollFrame, scrollBar, content, resetButton, alwaysVisible, eyeButton
 local onStateChanged, onClose, isCombatLocked
 local controlsRefreshing = false
 local numericRows, colorRows, textureRows = {}, {}, {}
 local choiceRows, dropdowns, layoutItems = {}, {}, {}
-local stackColors, fontFamily, showStacks
+local stackColors, fontFamily, showStacks, showTicks
 local selectedStack = 3
 local laidOutColorMode
 local eyeTooltipShown = false
@@ -128,14 +131,14 @@ local function CreateNumericRow(definition)
     local row = CreateRow(content, definition.label)
     row.definition = definition
     local slider = CreateFrame("Frame", nil, row, "MinimalSliderWithSteppersTemplate")
-    slider:SetPoint("LEFT", row.label, "RIGHT", 5, 0)
+    slider:SetPoint("LEFT", row.label, "RIGHT", CONTROL_GAP, 0)
     slider:SetSize(SLIDER_WIDTH, 17)
     local steps = (definition.max - definition.min) / definition.step
     slider:Init(ns.Config.GetNumber(definition.key), definition.min, definition.max, steps, {})
     row.slider = slider
 
     local input = CreateFrame("EditBox", nil, row, "InputBoxTemplate")
-    input:SetPoint("LEFT", slider, "RIGHT", 10, 0)
+    input:SetPoint("LEFT", slider, "RIGHT", INPUT_GAP, 0)
     input:SetSize(INPUT_WIDTH, 22)
     input:SetAutoFocus(false)
     -- Negative offsets require the ordinary edit box, validated on commit
@@ -195,7 +198,7 @@ end
 
 local function AddDropdown(row)
     local dropdown = CreateFrame("DropdownButton", nil, row, "WowStyle1DropdownTemplate")
-    dropdown:SetPoint("LEFT", row.label, "RIGHT", 5, 0)
+    dropdown:SetPoint("LEFT", row.label, "RIGHT", CONTROL_GAP, 0)
     dropdown:SetWidth(185)
     row.dropdown = dropdown
     dropdowns[#dropdowns + 1] = dropdown
@@ -362,7 +365,7 @@ local function CreateStackColorRows()
     local actions = CreateRow(content, "Stack count")
     actions.colorMode = "STACKS"
     local input = CreateFrame("EditBox", nil, actions, "InputBoxTemplate")
-    input:SetPoint("LEFT", actions.label, "RIGHT", 5, 0)
+    input:SetPoint("LEFT", actions.label, "RIGHT", CONTROL_GAP, 0)
     input:SetSize(INPUT_WIDTH, 22)
     input:SetAutoFocus(false)
     input:SetNumeric(true)
@@ -399,7 +402,8 @@ local function CreateStackColorRows()
     end)
     local removeButton = CreateFrame("Button", nil, actions, "UIPanelButtonTemplate")
     removeButton:SetPoint("LEFT", addButton, "RIGHT", 8, 0)
-    removeButton:SetSize(140, 26)
+    removeButton:SetPoint("RIGHT", actions, "RIGHT", 0, 0)
+    removeButton:SetHeight(26)
     removeButton:SetText("Remove")
     removeButton:SetScript("OnClick", function()
         if not CanEdit() then return end
@@ -418,7 +422,9 @@ local function CreateStackColorRows()
     hint.colorMode = "STACKS"
     hint:SetHeight(22)
     local text = hint:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    text:SetPoint("LEFT", hint, "LEFT", LABEL_WIDTH + 5, 0)
+    text:SetPoint("LEFT", hint, "LEFT", LABEL_WIDTH + CONTROL_GAP, 0)
+    text:SetWidth(ROW_WIDTH - LABEL_WIDTH - CONTROL_GAP)
+    text:SetJustifyH("LEFT")
     stackColors.hint = text
     SyncStackInput()
     RefreshStackColors()
@@ -513,6 +519,7 @@ local function BuildControls()
     CreateTextureRow("borderTexture", "border")
     CreateColorRow("borderColor")
     CreateSection("Tick")
+    showTicks = CreateCheckbox("Show ticks", ns.Config.GetShowTicks, ns.Config.SetShowTicks)
     AddNumericSection("Tick")
     CreateColorRow("tickColor")
 end
@@ -541,7 +548,7 @@ local function UpdatePanelSize()
     panel:SetHeight(height)
     scrollFrame:SetSize(ROW_WIDTH, height - PANEL_TOP - PANEL_BOTTOM - RESET_HEIGHT - 12)
     resetButton:ClearAllPoints()
-    resetButton:SetPoint("TOPLEFT", panel, "TOPLEFT", 20, -(height - PANEL_BOTTOM - RESET_HEIGHT))
+    resetButton:SetPoint("TOPLEFT", panel, "TOPLEFT", PANEL_PADDING, -(height - PANEL_BOTTOM - RESET_HEIGHT))
     scrollBar:SetShown(scrollFrame:GetVerticalScrollRange() > 0)
 end
 
@@ -589,11 +596,11 @@ local function EnsurePanel()
     eyeButton:SetScript("OnLeave", HideEyeTooltip)
 
     scrollFrame = CreateFrame("ScrollFrame", nil, panel)
-    scrollFrame:SetPoint("TOPLEFT", panel, "TOPLEFT", 20, -PANEL_TOP)
+    scrollFrame:SetPoint("TOPLEFT", panel, "TOPLEFT", PANEL_PADDING, -PANEL_TOP)
     scrollFrame:EnableMouseWheel(true)
     scrollBar = CreateFrame("EventFrame", nil, panel, "MinimalScrollBar")
-    scrollBar:SetPoint("TOPLEFT", scrollFrame, "TOPRIGHT", 12, 0)
-    scrollBar:SetPoint("BOTTOMLEFT", scrollFrame, "BOTTOMRIGHT", 12, 0)
+    scrollBar:SetPoint("TOP", scrollFrame, "TOPRIGHT", PANEL_PADDING / 2, 0)
+    scrollBar:SetPoint("BOTTOM", scrollFrame, "BOTTOMRIGHT", PANEL_PADDING / 2, 0)
     ScrollUtil.InitScrollFrameWithScrollBar(scrollFrame, scrollBar)
     scrollFrame:HookScript("OnScrollRangeChanged", function(frame, _, range)
         scrollBar:SetShown(range > 0)
@@ -652,6 +659,7 @@ function Settings.Refresh()
     end
     fontFamily.dropdown:OverrideText(ns.Config.GetFontFamily())
     showStacks:SetChecked(ns.Config.GetShowStacks())
+    showTicks:SetChecked(ns.Config.GetShowTicks())
     RefreshStackColors()
     alwaysVisible:SetChecked(ns.Config.GetAlwaysVisible())
     RefreshEyeButton()
@@ -682,7 +690,7 @@ function Settings._GetTestState()
         panel = panel, rows = numericRows, colors = colorRows, textures = textureRows,
         alwaysVisible = alwaysVisible, resetButton = resetButton, scrollFrame = scrollFrame,
         colorSession = ns.SettingsColorPicker._GetSession(), eyeButton = eyeButton,
-        choices = choiceRows, fontFamily = fontFamily, showStacks = showStacks,
+        choices = choiceRows, fontFamily = fontFamily, showStacks = showStacks, showTicks = showTicks,
         stackColors = stackColors and {
             dropdown = stackColors.dropdown, button = stackColors.button, swatch = stackColors.swatch,
             addButton = stackColors.addButton, removeButton = stackColors.removeButton,

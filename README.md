@@ -56,8 +56,10 @@ ticks. These samples do not create tracked applications.
 - Use **Backdrop** to customize the color, opacity and texture underneath the
   fill. It shows through the unfilled part of the bar and remains visible when
   the bar is empty. New settings use black (#000000) at 80% opacity with Solid texture.
-- Use the Tick section to set marker color and width from 1 to 20 with the slider
-  or number field. Ticks keep their full inner height regardless of border styling.
+- Use **Show ticks** in the Tick section to hide or show the markers. It is enabled
+  by default and affects both the live bar and Edit Mode preview. Hiding ticks
+  keeps the fill, stack count and timers running. Marker color and width from 1
+  to 20 remain adjustable; ticks keep their full inner height regardless of border styling.
 - **Color mode** offers **Class color** (the default Blizzard Druid orange),
   **Solid** (a customizable deeper orange), and **By stack count**.
 - In **By stack count**, choose a range or enter a **Stack count** from 1 to 20.
@@ -86,7 +88,7 @@ ticks. These samples do not create tracked applications.
   Friz Quadrata TT, or the locale's native font if unavailable, until their provider
   returns. Hiding the number does not change stack colors.
 - Use **Reset to Defaults** to restore a 300 by 18 bar at screen center, the
-  class-colored fill, Solid textures, white ticks at width 2, black border at size 1,
+  class-colored fill, Solid textures, visible white ticks at width 2, black border at size 1,
   offset 0, and enabled empty-bar visibility. Text returns to white Friz Quadrata TT,
   size 14, Drop shadow, centered with no offset, and visible. The backdrop
   returns to black at 80% opacity with Solid texture. Existing custom choices survive upgrades;
@@ -98,6 +100,8 @@ Width accepts whole numbers from 80 to 1000. Height accepts whole numbers from
 part of Blizzard Edit Mode layout profiles, imports, exports, Save, or Revert.
 Color pickers and texture menus close when editing ends or combat starts.
 The settings content scrolls when the available screen height requires it.
+The window fits the slider-and-input rows with equal side margins; scrolling
+uses the existing right margin.
 Text size accepts 8-64 UI units and horizontal offset accepts -500 to 500.
 
 Snapping sets the bar's position; it does not attach the bar to another element.

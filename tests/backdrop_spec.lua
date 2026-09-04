@@ -38,7 +38,7 @@ describe("Backdrop appearance", function()
             tickColor = { r = 0.2, g = 0.3, b = 0.4, a = 0.5 },
         } }
         ns.Config.Initialize(saved)
-        expect(saved.schemaVersion).to_equal(8)
+        expect(saved.schemaVersion).to_equal(9)
         expect(ns.Config.GetTexture("backdropTexture")).to_equal("Solid")
         ExpectColor({ ns.Config.GetColor("backdropColor") }, DEFAULT_COLOR)
         expect(ns.Config.GetNumber("width")).to_equal(410)
@@ -193,4 +193,50 @@ describe("Backdrop appearance", function()
         EditModeManagerFrame:ExitEditMode()
     end)
 
+    it("keeps balanced numeric-control margins and accessible scrolling across color modes", function()
+        Reset()
+        local state = OpenSettings()
+        local scrollbar
+        for _, frame in ipairs(_G._allFrames) do
+            if frame._template == "MinimalScrollBar" and frame:GetParent() == state.panel then scrollbar = frame end
+        end
+        expect(scrollbar).to_be_truthy()
+        UIParent:SetHeight(360)
+        _G._FireEvent("DISPLAY_SIZE_CHANGED")
+        for _, choice in ipairs(ns.Config.GetChoiceOptions("barColorMode")) do
+            _G._SelectDropdown(state.choices.barColorMode.dropdown, choice.label)
+            local leftMargin = select(4, state.scrollFrame:GetPoint())
+            for _, row in pairs(state.rows) do
+                local _, sliderAnchor, sliderRelativePoint, sliderGap = row.slider:GetPoint()
+                local _, inputAnchor, inputRelativePoint, inputGap = row.input:GetPoint()
+                expect(sliderAnchor).to_equal(row.label)
+                expect(inputAnchor).to_equal(row.slider)
+                expect(sliderRelativePoint).to_equal("RIGHT")
+                expect(inputRelativePoint).to_equal("RIGHT")
+                local edge = select(4, row:GetPoint()) + select(4, row.label:GetPoint()) + row.label._width
+                    + sliderGap + row.slider:GetWidth() + inputGap + row.input:GetWidth()
+                expect(state.panel:GetWidth() - leftMargin - edge).to_equal(leftMargin)
+            end
+            expect(state.scrollFrame:GetVerticalScrollRange() > 0).to_equal(true)
+            expect(scrollbar:IsShown()).to_equal(true)
+            local _, scrollAnchor, scrollRelativePoint, scrollOffset = scrollbar:GetPoint()
+            expect(scrollAnchor).to_equal(state.scrollFrame)
+            expect(scrollRelativePoint).to_equal("TOPRIGHT")
+            expect(scrollOffset > 0 and scrollOffset < leftMargin).to_equal(true)
+        end
+        local removeButton = state.stackColors.removeButton
+        local rightAnchorFound = false
+        for index = 1, removeButton:GetNumPoints() do
+            local point, relativeTo, relativePoint, x = removeButton:GetPoint(index)
+            if point == "RIGHT" then
+                expect(relativeTo).to_equal(removeButton:GetParent())
+                expect(relativePoint).to_equal("RIGHT")
+                expect(x <= 0).to_equal(true)
+                rightAnchorFound = true
+            end
+        end
+        expect(rightAnchorFound).to_equal(true)
+        expect(removeButton:GetParent():GetWidth() <= state.scrollFrame:GetWidth()).to_equal(true)
+        EditModeManagerFrame:ExitEditMode()
+    end)
 end)

@@ -150,6 +150,7 @@ function Bar.ApplyAppearance()
     stackText:SetTextColor(ns.Config.GetColor("textColor"))
     stackText:SetShown(ns.Config.GetShowStacks())
 
+    tickLayer:SetShown(ns.Config.GetShowTicks())
     local r, g, b, a = ns.Config.GetColor("tickColor")
     for _, texture in ipairs(tickTextures) do
         texture:SetColorTexture(r, g, b, a)
@@ -275,6 +276,7 @@ function Bar._GetPresentationSnapshot()
         stackText = stackText and stackText:GetText() or "",
         textRegion = stackText,
         backdropRegion = backdrop,
+        tickLayer = tickLayer,
         displayedStackCount = displayedStackCount,
         tickTextures = textures,
     }

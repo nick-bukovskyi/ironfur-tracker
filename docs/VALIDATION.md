@@ -1,11 +1,11 @@
-# Explicit Solid textures and appearance defaults validation
+# Tick visibility and balanced settings margins validation
 
-- Scope: Single Solid texture choice in each texture menu; black backdrop at 80% alpha, white text and black border defaults.
-- Persistence: Schema 8 migrates Default texture aliases to Solid without replacing custom colors or media.
-- Contracts: Existing WHITE8X8 asset and media resolution; no new game APIs or events.
+- Scope: Show ticks toggles marker visibility while timers, fill and count continue; equal 20-unit settings margins.
+- Persistence: Schema 9 adds showTicks with default true, preserving explicit false.
+- Contracts: SetShown on the ordinary tick layer; numeric row width and native scrollbar anchors.
 - Target: Retail live 12.1.0.69587, interface 120100; TOC version 0.1.0 unchanged.
 - Source: Gethe/wow-ui-source live commit 8ea15b61e45c0ed4eba01439c90757f86eb78d34, version.txt 12.1.0.69587.
-- All 90 off-client tests pass from this complete commit snapshot; its Lua files parse successfully.
+- All 94 off-client tests pass from this complete commit snapshot; its Lua files parse successfully.
 - Tests load runtime files in TOC order with addon varargs and strict stubs. They do not establish client rendering or combat safety.
 
 | Context | Evidence |
