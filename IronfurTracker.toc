@@ -1,5 +1,6 @@
 ## Interface: 120100
 ## Title: Ironfur Tracker
+## IconTexture: Interface\AddOns\IronfurTracker\public\logo.tga
 ## Notes: A customizable Ironfur stack and duration tracker for Druids in Bear Form.
 ## Author: Sonterix
 ## Version: 0.1.0

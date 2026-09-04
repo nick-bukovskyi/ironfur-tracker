@@ -25,6 +25,7 @@ All notable changes to Ironfur Tracker will be documented in this file.
 
 ### Added
 
+- Ironfur Tracker now has its own logo beside its name in the AddOns list.
 - Bar color can now follow time remaining: green above 50%, yellow above 25%
   through 50%, and red at 25% or less. Customize each color and opacity while
   keeping these thresholds fixed. Plain-language labels describe how much time

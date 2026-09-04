@@ -1,5 +1,7 @@
 # Ironfur Tracker
 
+<img src="public/logo.png" alt="Ironfur Tracker logo" width="256">
+
 Ironfur Tracker is a focused World of Warcraft 12.1 addon for Druids.
 It displays locally tracked Ironfur applications while the player is in Bear
 Form.
@@ -28,6 +30,20 @@ stack count.
 - Saves size, position, appearance, and visibility account-wide immediately.
 - Includes LibSharedMedia and its small dependencies; no separate addon is required.
 - Has no addon slash commands.
+
+## Screenshots
+
+**Default appearance**
+
+![Default Ironfur Tracker bar](public/screenshots/default.png)
+
+**WoW-style appearance**
+
+![Ironfur Tracker with a green fill and textured border](public/screenshots/wow-like.png)
+
+**Settings**
+
+<img src="public/screenshots/settings.png" alt="Ironfur Tracker appearance settings" width="400">
 
 ## Edit Mode
 
