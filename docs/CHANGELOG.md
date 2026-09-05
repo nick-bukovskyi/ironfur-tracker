@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.1] - 2026-09-05
+
+### Added
+
+- Move the selected bar with the arrow keys in Edit Mode, or hold Shift for larger steps, just like Blizzard's UI.
+
 ## [0.1.0] - 2026-09-03
 
 ### Added

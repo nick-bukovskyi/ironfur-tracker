@@ -825,6 +825,27 @@ end
 function FrameMixin:IsMouseEnabled()
   return self._mouseEnabled == true
 end
+function FrameMixin:EnableKeyboard(enable, ...)
+  AssertNoExtraArguments("EnableKeyboard", ...)
+  AssertType(enable, "boolean", "keyboard enabled")
+  self._keyboardEnabled = enable
+end
+function FrameMixin:IsKeyboardEnabled(...)
+  AssertNoExtraArguments("IsKeyboardEnabled", ...)
+  return self._keyboardEnabled == true
+end
+function FrameMixin:SetPropagateKeyboardInput(propagate, ...)
+  AssertNoExtraArguments("SetPropagateKeyboardInput", ...)
+  AssertType(propagate, "boolean", "keyboard propagation")
+  if _G._stubInCombat then
+    error("addon keyboard propagation changes are forbidden in combat", 2)
+  end
+  self._propagateKeyboardInput = propagate
+end
+function FrameMixin:GetPropagateKeyboardInput(...)
+  AssertNoExtraArguments("GetPropagateKeyboardInput", ...)
+  return self._propagateKeyboardInput == true
+end
 function FrameMixin:RegisterForDrag(...)
   self._dragButtons = { ... }
 end
@@ -1626,6 +1647,7 @@ _G._stubClassID = 11
 _G._stubShapeshiftFormID = 5
 _G._stubKnownSpells = {}
 _G._stubInCombat = false
+_G._stubShiftKeyDown = false
 _G._stubSecretValue = {}
 
 function GetTime(...)
@@ -1654,6 +1676,20 @@ end
 function InCombatLockdown(...)
   AssertNoExtraArguments("InCombatLockdown", ...)
   return _G._stubInCombat
+end
+
+function IsShiftKeyDown(...)
+  AssertNoExtraArguments("IsShiftKeyDown", ...)
+  return _G._stubShiftKeyDown
+end
+
+function GetCurrentKeyBoardFocus(...)
+  AssertNoExtraArguments("GetCurrentKeyBoardFocus", ...)
+  for _, frame in ipairs(_G._allFrames) do
+    if frame._type == "EditBox" and frame:HasFocus() then
+      return frame
+    end
+  end
 end
 
 C_SpellBook = {
@@ -1690,6 +1726,7 @@ function _G._ResetWowStubs()
   _G._stubClassID = 11
   _G._stubShapeshiftFormID = 5
   _G._stubInCombat = false
+  _G._stubShiftKeyDown = false
   for spellID in pairs(_G._stubKnownSpells) do
     _G._stubKnownSpells[spellID] = nil
   end

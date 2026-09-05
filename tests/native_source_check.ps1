@@ -10,6 +10,10 @@ $geometryStart = $systemSource.IndexOf('function EditModeSystemMixin:HasValidSel
 $geometryEnd = $systemSource.IndexOf('function EditModeSystemMixin:AddSnappedFrame(')
 if ($geometryStart -lt 0 -or $geometryEnd -le $geometryStart) { throw 'Native geometry boundaries changed' }
 $geometrySource = $systemSource.Substring($geometryStart, $geometryEnd - $geometryStart)
+$movementStart = $systemSource.IndexOf('function EditModeSystemMixin:ProcessMovementKey(')
+$movementEnd = $systemSource.IndexOf('function EditModeSystemMixin:PrepareForSave(')
+if ($movementStart -lt 0 -or $movementEnd -le $movementStart) { throw 'Native keyboard boundaries changed' }
+$movementSource = $systemSource.Substring($movementStart, $movementEnd - $movementStart)
 
 $bootstrap = @'
 dofile("tests/wow_stubs.lua")
@@ -96,8 +100,38 @@ equal(y, 700, "expanded selection Y")
 assert(magnetism.magneticFrames[bar] == nil, "addon registered a magnetic frame")
 assert(ns.EditModeSnap._GetTestState().previewFrame:GetScript("OnUpdate") == nil, "idle preview work")
 print("Pinned Blizzard 12.1.0.69587 source: 8 placement scenarios passed (off-client only)")
+
+-- Compare addon movement with the actual native key handlers, intercepting only
+-- the native frame operations that would otherwise alter a Blizzard system
+local native = setmetatable({}, { __index = EditModeSystemMixin })
+function native:CanBeMoved() return true end
+function native:ClearFrameSnap() self.snapCleared = true end
+function native:StopMovingOrSizing() self.movementStopped = true end
+function native:BreakFrameSnap(deltaX, deltaY)
+    assert(self.snapCleared and self.movementStopped, "native movement lifecycle changed")
+    self.deltaX, self.deltaY = deltaX, deltaY
+end
+local panel = ns.Settings._GetTestState().panel
+for _, shiftKey in ipairs({ false, "LSHIFT", "RSHIFT" }) do
+    for _, key in ipairs({ "UP", "DOWN", "LEFT", "RIGHT" }) do
+        native:ClearDownKeys()
+        native.snapCleared, native.movementStopped = false, false
+        if shiftKey then native:OnKeyDown(shiftKey) end
+        native:OnKeyDown(key)
+        ns.Config.SetPosition(12.25, -34.75)
+        ns.Bar.ApplyGeometry()
+        _G._stubShiftKeyDown = shiftKey ~= false
+        _RunFrameScript(panel, "OnKeyDown", key)
+        equal(IronfurTrackerDB.bar.offsetX, 12.25 + native.deltaX, "native arrow X")
+        equal(IronfurTrackerDB.bar.offsetY, -34.75 + native.deltaY, "native arrow Y")
+        assert(not panel:GetPropagateKeyboardInput(), "movement key was not consumed")
+        native:OnKeyUp(key)
+        _RunFrameScript(panel, "OnKeyUp", key)
+    end
+end
+print("Pinned Blizzard 12.1.0.69587 source: 12 keyboard comparisons passed (off-client only)")
 '@
 
-$luaScript = $bootstrap + "`n" + $magnetismSource + "`n" + $geometrySource + "`n" + $checks
+$luaScript = $bootstrap + "`n" + $magnetismSource + "`n" + $geometrySource + "`n" + $movementSource + "`n" + $checks
 $luaScript | & lua -
 if ($LASTEXITCODE -ne 0) { throw 'Native-source contract checks failed' }

@@ -12,7 +12,7 @@ local SCROLLBAR_GAP, SCROLLBAR_ARROW_WIDTH = 8, 17
 local PANEL_WIDTH = ROW_WIDTH + SCROLLBAR_GAP + SCROLLBAR_ARROW_WIDTH + PANEL_PADDING * 2
 local PANEL_TOP, PANEL_BOTTOM, RESET_HEIGHT = 45, 25, 28
 local panel, scrollFrame, scrollBar, content, resetButton, alwaysVisible, eyeButton
-local onStateChanged, onClose, isCombatLocked
+local onStateChanged, onClose, isCombatLocked, onMoveKey
 local controlsRefreshing = false
 local numericRows, colorRows, textureRows = {}, {}, {}
 local choiceRows, dropdowns, layoutItems = {}, {}, {}
@@ -656,6 +656,22 @@ local function EnsurePanel()
   panel:SetMovable(true)
   panel:SetClampedToScreen(true)
   panel:EnableMouse(true)
+  panel:EnableKeyboard(true)
+  panel:SetPropagateKeyboardInput(true)
+  panel:SetScript("OnKeyDown", function(frame, key)
+    -- Keyboard propagation cannot be changed by addon code in combat
+    if isCombatLocked() then
+      return
+    end
+    local handled = CanEdit() and not GetCurrentKeyBoardFocus() and onMoveKey(key)
+    frame:SetPropagateKeyboardInput(not handled)
+  end)
+  panel:SetScript("OnKeyUp", function(frame)
+    if not isCombatLocked() then
+      -- Let releases reach bindings that may have started before selection
+      frame:SetPropagateKeyboardInput(true)
+    end
+  end)
   panel:RegisterForDrag("LeftButton")
   panel:SetScript("OnDragStart", function(frame)
     if CanEdit() then
@@ -739,8 +755,9 @@ local function EnsurePanel()
   end)
 end
 
-function Settings.Initialize(stateChanged, closed, combatCheck)
+function Settings.Initialize(stateChanged, closed, combatCheck, moveKey)
   onStateChanged, onClose, isCombatLocked = stateChanged, closed, combatCheck
+  onMoveKey = moveKey
   ns.SettingsColorPicker.Initialize(CanEdit, function(key, index)
     ns.Bar.ApplyAppearance()
     if index then

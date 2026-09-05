@@ -109,6 +109,7 @@ local suites = {
   "tests/duration_color_spec.lua",
   "tests/highlight_spec.lua",
   "tests/eqol_dialog_spec.lua",
+  "tests/edit_mode_keyboard_spec.lua",
 }
 if arg and #arg > 0 then
   suites = arg

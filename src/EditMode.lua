@@ -121,6 +121,33 @@ local function ShouldShowEditor()
   return modeActive and selectionsShown and eligible and not IsCombatLocked()
 end
 
+local function MoveByKey(key)
+  if not selected or not ShouldShowEditor() or not selection:IsShown() then
+    return false
+  end
+
+  -- Retail 12.1.0.69587 uses one UI unit, or ten with Shift, without snapping
+  local step = IsShiftKeyDown() and 10 or 1
+  local deltaX, deltaY = 0, 0
+  if key == "UP" then
+    deltaY = step
+  elseif key == "DOWN" then
+    deltaY = -step
+  elseif key == "LEFT" then
+    deltaX = -step
+  elseif key == "RIGHT" then
+    deltaX = step
+  else
+    return false
+  end
+
+  FinishDrag(false)
+  local _, _, offsetX, offsetY = ns.Config.GetBarValues()
+  ns.Config.SetPosition(offsetX + deltaX, offsetY + deltaY)
+  ns.Bar.ApplyGeometry()
+  return true
+end
+
 local function RefreshEditorState()
   if not ShouldShowEditor() or not EnsureSelection() then
     SuspendEditor()
@@ -360,7 +387,7 @@ function EditMode.Initialize(onStateChanged)
       selection:ShowHighlighted()
     end
     ns.Settings.Hide()
-  end, IsCombatLocked)
+  end, IsCombatLocked, MoveByKey)
 
   if not eventsRegistered and EventRegistry and EventRegistry.RegisterCallback then
     EventRegistry:RegisterCallback("EditMode.Enter", EditMode.OnEnter, EditMode)
