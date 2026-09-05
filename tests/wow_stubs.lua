@@ -1623,8 +1623,6 @@ _G._RefreshStubMagnetismBounds()
 _G._stubNow = 0
 _G._stubClassToken = "DRUID"
 _G._stubClassID = 11
-_G._stubSpecializationIndex = 3
-_G._stubSpecializationID = 104
 _G._stubShapeshiftFormID = 5
 _G._stubKnownSpells = {}
 _G._stubInCombat = false
@@ -1658,20 +1656,6 @@ function InCombatLockdown(...)
   return _G._stubInCombat
 end
 
-C_SpecializationInfo = {
-  GetSpecialization = function(...)
-    AssertNoExtraArguments("C_SpecializationInfo.GetSpecialization", ...)
-    return _G._stubSpecializationIndex
-  end,
-  GetSpecializationInfo = function(index, ...)
-    AssertNoExtraArguments("C_SpecializationInfo.GetSpecializationInfo", ...)
-    if type(index) ~= "number" then
-      error("GetSpecializationInfo expected numeric index", 2)
-    end
-    return _G._stubSpecializationID
-  end,
-}
-
 C_SpellBook = {
   IsSpellKnown = function(spellID, ...)
     AssertNoExtraArguments("C_SpellBook.IsSpellKnown", ...)
@@ -1704,8 +1688,6 @@ function _G._ResetWowStubs()
   _G._stubClassToken = "DRUID"
   _G._stubClassColorAvailable = true
   _G._stubClassID = 11
-  _G._stubSpecializationIndex = 3
-  _G._stubSpecializationID = 104
   _G._stubShapeshiftFormID = 5
   _G._stubInCombat = false
   for spellID in pairs(_G._stubKnownSpells) do

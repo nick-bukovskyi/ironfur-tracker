@@ -1,5 +1,6 @@
 local ns = _G._test_ns
-local library = assert(LibStub:GetLibrary("EnhanceQoLEditMode-1.0", true))
+-- This suite owns only the optional dialog API it exercises
+local library = assert(LibStub:NewLibrary("EnhanceQoLEditMode-1.0", 1))
 local dialog = CreateFrame("Frame", nil, UIParent)
 local providerSelected = false
 local closeCalls = 0

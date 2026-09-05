@@ -1,5 +1,5 @@
 -- Strict off-client test runner for Ironfur Tracker.
--- Usage: lua tests/runner.lua
+-- Usage: lua tests/runner.lua [tests/example_spec.lua ...]
 
 local passed = 0
 local failed = 0
@@ -30,6 +30,10 @@ function it(name, callback)
   end
 end
 
+local function IsFiniteNumber(value)
+  return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
+end
+
 function expect(actual)
   return {
     to_equal = function(expected)
@@ -53,76 +57,71 @@ function expect(actual)
       end
     end,
     to_be_close_to = function(expected, tolerance)
-      tolerance = tolerance or 0.000001
-      if type(actual) ~= "number" or math.abs(actual - expected) > tolerance then
+      if tolerance == nil then
+        tolerance = 0.000001
+      end
+      if
+        not IsFiniteNumber(actual)
+        or not IsFiniteNumber(expected)
+        or not IsFiniteNumber(tolerance)
+        or tolerance < 0
+        or math.abs(actual - expected) > tolerance
+      then
         error(string.format("expected %s within %s, got %s", expected, tolerance, tostring(actual)), 2)
       end
     end,
   }
 end
 
-dofile("tests/wow_stubs.lua")
-
-local addonName = "IronfurTracker"
-local namespace = {}
-local tocMetadata = {}
-local addonFiles = {}
-
-for line in io.lines("IronfurTracker.toc") do
-  line = line:gsub("^%s+", ""):gsub("%s+$", "")
-  if line ~= "" then
-    local key, value = line:match("^##%s*([^:]+):%s*(.-)%s*$")
-    if key then
-      tocMetadata[key] = value
-    elseif not line:match("^#") then
-      local path = line:gsub("\\", "/")
-      if not path:match("%.lua$") then
-        error("test runner does not support TOC entry: " .. path)
-      end
-      addonFiles[#addonFiles + 1] = path
+describe("Numeric assertions", function()
+  it("accepts finite close values and rejects invalid numbers and tolerances", function()
+    expect(0.5 + 0.0000005).to_be_close_to(0.5)
+    expect(0.5).to_be_close_to(0.5, 0)
+    expect(0.625).to_be_close_to(0.5, 0.125)
+    for _, sample in ipairs({
+      { 0.6, 0.5 },
+      { 0 / 0, 0.5 },
+      { 0.5, 0 / 0 },
+      { math.huge, math.huge },
+      { -math.huge, -math.huge },
+      { "0.5", 0.5 },
+      { 0.5, "0.5" },
+      { 0.5, 0.5, -1 },
+      { 0.5, 0.5, 0 / 0 },
+      { 0.5, 0.5, math.huge },
+      { 0.5, 0.5, false },
+    }) do
+      local ok = pcall(function()
+        expect(sample[1]).to_be_close_to(sample[2], sample[3])
+      end)
+      expect(ok).to_equal(false)
     end
+  end)
+end)
+
+local Bootstrap = dofile("tests/bootstrap.lua")
+local suites = {
+  "tests/tracker_spec.lua",
+  "tests/appearance_spec.lua",
+  "tests/tick_visibility_spec.lua",
+  "tests/backdrop_spec.lua",
+  "tests/font_color_spec.lua",
+  "tests/duration_color_spec.lua",
+  "tests/highlight_spec.lua",
+  "tests/eqol_dialog_spec.lua",
+}
+if arg and #arg > 0 then
+  suites = arg
+end
+for _, path in ipairs(suites) do
+  local environment = Bootstrap.CreateEnvironment()
+  local namespace = Bootstrap.LoadAddon(environment)
+  environment._FireEvent("ADDON_LOADED", Bootstrap.addonName)
+  if not namespace.Core.IsInitialized() then
+    error("Ironfur Tracker did not initialize at its ADDON_LOADED boundary")
   end
+  environment.dofile(path)
 end
-
-if tocMetadata.SavedVariables ~= "IronfurTrackerDB" then
-  error("IronfurTracker.toc must declare exactly ## SavedVariables: IronfurTrackerDB")
-end
-if #addonFiles == 0 then
-  error("IronfurTracker.toc contains no runtime Lua files")
-end
-
-IronfurTrackerDB = nil
-for _, path in ipairs(addonFiles) do
-  local chunk, loadError = loadfile(path)
-  if not chunk then
-    error("unable to load " .. path .. ": " .. tostring(loadError))
-  end
-  chunk(addonName, namespace)
-end
-
-_G._loadedAddonFiles = addonFiles
-_G._tocMetadata = tocMetadata
-_G._test_ns = namespace
-
--- SavedVariables exist before file execution, while ADDON_LOADED is the add-on's
--- initialization boundary. A foreign add-on event must not initialize this one.
-_G._FireEvent("ADDON_LOADED", "SomeOtherAddon")
-if namespace.Core.IsInitialized() then
-  error("Ironfur Tracker initialized for another add-on's ADDON_LOADED event")
-end
-_G._FireEvent("ADDON_LOADED", addonName)
-if not namespace.Core.IsInitialized() then
-  error("Ironfur Tracker did not initialize at its ADDON_LOADED boundary")
-end
-
-dofile("tests/tracker_spec.lua")
-dofile("tests/appearance_spec.lua")
-dofile("tests/tick_visibility_spec.lua")
-dofile("tests/backdrop_spec.lua")
-dofile("tests/font_color_spec.lua")
-dofile("tests/duration_color_spec.lua")
-dofile("tests/highlight_spec.lua")
-dofile("tests/eqol_dialog_spec.lua")
 
 print("")
 print(string.rep("-", 50))

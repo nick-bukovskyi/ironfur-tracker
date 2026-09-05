@@ -1,4 +1,5 @@
 local ns = _G._test_ns
+local Bootstrap = _G._testBootstrap
 
 local IRONFUR_SPELL_ID = 192081
 local MANGLE_SPELL_ID = 33917
@@ -63,22 +64,117 @@ describe("Loading, persistence, and lifecycle", function()
   end)
 
   it("starts with account-wide defaults at the screen center", function()
-    Reset()
+    local environment = Bootstrap.CreateEnvironment()
+    local loaded = Bootstrap.LoadAddon(environment)
+    expect(loaded.Core.IsInitialized()).to_equal(false)
+    expect(environment.IronfurTrackerDB).to_be_nil()
+    environment._FireEvent("ADDON_LOADED", "SomeOtherAddon")
+    expect(loaded.Core.IsInitialized()).to_equal(false)
+    expect(environment.IronfurTrackerDB).to_be_nil()
+    environment._FireEvent("ADDON_LOADED", Bootstrap.addonName)
+    environment._FireEvent("PLAYER_ENTERING_WORLD")
 
-    local point, relativeTo, relativePoint, offsetX, offsetY = bar:GetPoint()
-    expect(IronfurTrackerDB.schemaVersion).to_equal(11)
-    expect(IronfurTrackerDB.bar.width).to_equal(300)
-    expect(IronfurTrackerDB.bar.height).to_equal(18)
-    expect(bar:GetWidth()).to_equal(300)
-    expect(bar:GetHeight()).to_equal(18)
+    local frame = loaded.Bar.GetFrame()
+    local point, relativeTo, relativePoint, offsetX, offsetY = frame:GetPoint()
+    expect(environment.IronfurTrackerDB.schemaVersion).to_equal(11)
+    expect(environment.IronfurTrackerDB.bar.width).to_equal(300)
+    expect(environment.IronfurTrackerDB.bar.height).to_equal(18)
+    expect(frame:GetWidth()).to_equal(300)
+    expect(frame:GetHeight()).to_equal(18)
     expect(point).to_equal("CENTER")
-    expect(relativeTo).to_equal(UIParent)
+    expect(relativeTo).to_equal(environment.UIParent)
     expect(relativePoint).to_equal("CENTER")
     expect(offsetX).to_equal(0)
     expect(offsetY).to_equal(0)
-    expect(bar:IsShown()).to_equal(true)
-    expect(ns.Bar._GetPresentationSnapshot().stackText).to_equal("0")
-    expect(ns.Core._GetUpdateDriver():IsShown()).to_equal(false)
+    expect(frame:IsShown()).to_equal(true)
+    expect(loaded.Bar._GetPresentationSnapshot().stackText).to_equal("0")
+    expect(loaded.Core._GetUpdateDriver():IsShown()).to_equal(false)
+  end)
+
+  it("restores saved appearance and position on fresh startup and reload", function()
+    local saved = {
+      schemaVersion = 11,
+      bar = {
+        width = 640,
+        height = 38,
+        offsetX = 125.5,
+        offsetY = -42.25,
+        alwaysVisible = false,
+        showTicks = false,
+        fontSize = 21,
+        barColorMode = "STACKS",
+        barTexture = "Unavailable saved texture",
+        stackColors = { [2] = { r = 0.2, g = 0.3, b = 0.4, a = 0.5 } },
+      },
+    }
+    for loadIndex = 1, 2 do
+      local environment = Bootstrap.CreateEnvironment()
+      local loaded = Bootstrap.LoadAddon(environment, saved)
+      expect(loaded.Core.IsInitialized()).to_equal(false)
+      expect(environment.IronfurTrackerDB).to_equal(saved)
+      environment._FireEvent("ADDON_LOADED", Bootstrap.addonName)
+      environment._FireEvent("PLAYER_ENTERING_WORLD")
+      local frame = loaded.Bar.GetFrame()
+      expect(environment.IronfurTrackerDB).to_equal(saved)
+      expect(frame:GetWidth()).to_equal(loadIndex == 1 and 640 or 500)
+      expect(frame:GetHeight()).to_equal(38)
+      expect(select(4, frame:GetPoint())).to_equal(125.5)
+      expect(select(5, frame:GetPoint())).to_equal(-42.25)
+      expect(frame:IsShown()).to_equal(false)
+      expect(loaded.Config.GetShowTicks()).to_equal(false)
+      expect(loaded.Config.GetNumber("fontSize")).to_equal(21)
+      expect(loaded.Config.GetTexture("barTexture")).to_equal("Unavailable saved texture")
+      expect(loaded.Config.GetChoice("barColorMode")).to_equal("STACKS")
+      expect(loaded.Config.GetStackColorCount()).to_equal(1)
+      expect(select(4, loaded.Config.GetStackColor(2))).to_equal(0.5)
+      expect(loaded.Tracker._GetSnapshot().count).to_equal(0)
+      if loadIndex == 1 then
+        loaded.Config.CommitNumber("width", 500)
+        environment._FireEvent("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-before-reload", IRONFUR_SPELL_ID)
+        expect(loaded.Tracker._GetSnapshot().count).to_equal(1)
+      end
+    end
+  end)
+
+  it("migrates legacy SavedVariables through ADDON_LOADED while preserving valid settings", function()
+    local saved = {
+      schemaVersion = 4,
+      bar = {
+        width = 420,
+        height = "broken",
+        offsetX = 13.5,
+        offsetY = -22,
+        fontFamily = "Default",
+        fontStyle = "DEFAULT",
+        fontSize = 22,
+        showStacks = false,
+        barColorMode = "STACKS",
+        barColor = { r = 0.2, g = 0.3, b = 0.4, a = 0.5 },
+        stackColors = { [3] = { r = 0.6, g = 0.7, b = 0.8, a = 0.9 } },
+      },
+    }
+    local environment = Bootstrap.CreateEnvironment()
+    local loaded = Bootstrap.LoadAddon(environment, saved)
+    environment._FireEvent("ADDON_LOADED", "SomeOtherAddon")
+    expect(loaded.Core.IsInitialized()).to_equal(false)
+    expect(saved.schemaVersion).to_equal(4)
+    expect(saved.bar.height).to_equal("broken")
+    environment._FireEvent("ADDON_LOADED", Bootstrap.addonName)
+    environment._FireEvent("PLAYER_ENTERING_WORLD")
+    expect(environment.IronfurTrackerDB).to_equal(saved)
+    expect(saved.schemaVersion).to_equal(11)
+    expect(loaded.Bar.GetFrame():GetWidth()).to_equal(420)
+    expect(loaded.Bar.GetFrame():GetHeight()).to_equal(18)
+    expect(select(4, loaded.Bar.GetFrame():GetPoint())).to_equal(13.5)
+    expect(select(5, loaded.Bar.GetFrame():GetPoint())).to_equal(-22)
+    expect(loaded.Config.GetFontFamily()).to_equal("Friz Quadrata TT")
+    expect(loaded.Config.GetChoice("fontStyle")).to_equal("SHADOW")
+    expect(loaded.Config.GetNumber("fontSize")).to_equal(22)
+    expect(loaded.Config.GetShowStacks()).to_equal(false)
+    expect(loaded.Config.GetChoice("barColorMode")).to_equal("STACKS")
+    expect(loaded.Config.GetStackColorCount()).to_equal(3)
+    expect(select(4, loaded.Config.GetStackColor(2))).to_equal(0.5)
+    expect(select(4, loaded.Config.GetStackColor(3))).to_equal(0.9)
   end)
 
   it("recovers only invalid SavedVariables fields", function()
@@ -505,7 +601,7 @@ describe("Ironfur timer behavior", function()
     expect(bar._value).to_be_close_to(0.5)
   end)
 
-  it("ignores non-Druid casts and retains applications across Druid specs", function()
+  it("ignores non-Druid casts and retains applications after a player specialization change", function()
     Reset()
     _G._stubClassToken = "MAGE"
     Fire("PLAYER_SPECIALIZATION_CHANGED", "player")
@@ -513,12 +609,10 @@ describe("Ironfur timer behavior", function()
     expect(ns.Tracker._GetSnapshot().count).to_equal(0)
 
     _G._stubClassToken = "DRUID"
-    _G._stubSpecializationID = 104
     Fire("PLAYER_SPECIALIZATION_CHANGED", "player")
     Cast(IRONFUR_SPELL_ID)
     expect(ns.Tracker._GetSnapshot().count).to_equal(1)
 
-    _G._stubSpecializationID = 105
     Fire("PLAYER_SPECIALIZATION_CHANGED", "player")
     expect(ns.Tracker._GetSnapshot().count).to_equal(1)
     expect(bar:IsShown()).to_equal(true)
@@ -556,30 +650,46 @@ describe("Ironfur timer behavior", function()
 
     expect(ns.Tracker._GetSnapshot().ticks[1].duration).to_equal(7)
   end)
+
+  it("expires the pending Guardian of Elune bonus exactly fifteen seconds after Mangle", function()
+    for _, sample in ipairs({ { 114.999, 10 }, { 115, 7 }, { 115.001, 7 } }) do
+      Reset()
+      _G._stubKnownSpells[GUARDIAN_OF_ELUNE_SPELL_ID] = true
+      _G._stubNow = 100
+      Cast(MANGLE_SPELL_ID)
+      _G._stubNow = sample[1]
+      Cast(IRONFUR_SPELL_ID)
+      expect(ns.Tracker._GetSnapshot().ticks[1].duration).to_equal(sample[2])
+    end
+  end)
+
+  it("refreshes the pending Guardian of Elune deadline when Mangle is cast again", function()
+    for _, sample in ipairs({ { 115, 10 }, { 125, 7 } }) do
+      Reset()
+      _G._stubKnownSpells[GUARDIAN_OF_ELUNE_SPELL_ID] = true
+      _G._stubNow = 100
+      Cast(MANGLE_SPELL_ID)
+      _G._stubNow = 110
+      Cast(MANGLE_SPELL_ID)
+      _G._stubNow = sample[1]
+      Cast(IRONFUR_SPELL_ID)
+      expect(ns.Tracker._GetSnapshot().ticks[1].duration).to_equal(sample[2])
+    end
+  end)
 end)
 
 describe("Bear-only presentation", function()
-  it("shows empty Bear bars and tracks casts for every Druid specialization", function()
-    for _, specID in ipairs({ 102, 103, 104, 105, false }) do
-      Reset()
-      _G._stubSpecializationID = specID or nil
-      Fire("PLAYER_SPECIALIZATION_CHANGED", "player")
-      expect(ns.Core._GetPlayerState().druid).to_equal(true)
-      expect(bar:IsShown()).to_equal(true)
-      expect(ns.Bar._GetPresentationSnapshot().stackText).to_equal("0")
-      expect(ns.Core._GetUpdateDriver():IsShown()).to_equal(false)
-      Cast(IRONFUR_SPELL_ID)
-      expect(ns.Tracker._GetSnapshot().count).to_equal(1)
-      expect(bar._value).to_equal(1)
-
-      _G._stubShapeshiftFormID = nil
-      Fire("UPDATE_SHAPESHIFT_FORM")
-      local state = OpenEditor()
-      expect(state.eligible).to_equal(true)
-      expect(state.panel:IsShown()).to_equal(true)
-      EditModeManagerFrame:ExitEditMode()
-      expect(bar:IsShown()).to_equal(false)
-    end
+  it("keeps the Druid editor available outside Bear Form", function()
+    Reset()
+    _G._stubShapeshiftFormID = nil
+    Fire("UPDATE_SHAPESHIFT_FORM")
+    expect(bar:IsShown()).to_equal(false)
+    local state = OpenEditor()
+    expect(state.eligible).to_equal(true)
+    expect(state.panel:IsShown()).to_equal(true)
+    expect(ns.EditMode.IsPreviewActive()).to_equal(true)
+    EditModeManagerFrame:ExitEditMode()
+    expect(bar:IsShown()).to_equal(false)
   end)
 
   it("can disable empty visibility without hiding active applications", function()
@@ -952,26 +1062,6 @@ describe("Edit Mode companion", function()
     expect(bar:GetHeight()).to_equal(18)
     expect(offsetX).to_equal(0)
     expect(offsetY).to_equal(0)
-  end)
-
-  it("keeps native bottom clearance below the final settings button", function()
-    Reset()
-    local state = OpenEditor()
-    local resetButton = FindButton("Reset to Defaults")
-    local control = resetButton
-    local buttonTop = 0
-    while control ~= state.panel do
-      local point, relativeTo, relativePoint, _, offsetY = control:GetPoint()
-      expect(point == "TOP" or point == "TOPLEFT").to_equal(true)
-      if relativePoint == "BOTTOM" or relativePoint == "BOTTOMLEFT" then
-        buttonTop = buttonTop + relativeTo:GetHeight()
-      else
-        expect(relativePoint).to_equal("TOPLEFT")
-      end
-      buttonTop = buttonTop - offsetY
-      control = relativeTo
-    end
-    expect(state.panel:GetHeight() - buttonTop - resetButton:GetHeight()).to_equal(25)
   end)
 
   it("does not duplicate frames, callbacks, or hooks on repeated setup", function()

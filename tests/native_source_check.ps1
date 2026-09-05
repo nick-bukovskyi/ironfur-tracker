@@ -24,11 +24,7 @@ end
 '@
 $checks = @'
 hooksecurefunc = objectHook
-local ns = {}
-for line in io.lines("IronfurTracker.toc") do
-    local path = line:match("^(src.+%.lua)%s*$")
-    if path then assert(loadfile((path:gsub("\\", "/"))))("IronfurTracker", ns) end
-end
+local ns = dofile("tests/bootstrap.lua").LoadAddon(_G)
 _FireEvent("ADDON_LOADED", "IronfurTracker")
 EditModeManagerFrame:EnterEditMode()
 EditModeManagerFrame:SetEnableSnap(true)
