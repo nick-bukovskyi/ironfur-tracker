@@ -16,7 +16,7 @@ LibStub and CallbackHandler load before LibSharedMedia, and all three load befor
 Ironfur Tracker's media settings.
 
 LibSharedMedia makes registered fonts and textures available in the settings
-menus. Additional media addons are optional. EnhanceQoL is not required or bundled.
+menus. Additional media addons are optional.
 
 The project's [MIT license](../LICENSE) covers Ironfur Tracker's original code
 and documentation. Bundled libraries retain their own licenses. The logo is
