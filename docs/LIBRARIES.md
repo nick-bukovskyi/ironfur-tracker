@@ -10,8 +10,9 @@ in the addon download.
 | [CallbackHandler-1.0](https://www.wowace.com/projects/callbackhandler) | Minor 8, revision 26 | [BSD license](../libs/CallbackHandler-1.0/LICENSE.txt) |
 | [LibSharedMedia-3.0](https://www.wowace.com/projects/libsharedmedia-3-0) | Minor 12000002, revision 176 | [LGPL 2.1](../libs/LibSharedMedia-3.0/LICENSE.txt) |
 
-All three Lua files are unmodified copies from the author's
-[LibSharedMedia-3.0 v12.1.0 distribution](https://www.wowace.com/projects/libsharedmedia-3-0/files/8691989).
+All three Lua files are copies from the author's
+[LibSharedMedia-3.0 v12.1.0 distribution](https://www.wowace.com/projects/libsharedmedia-3-0/files/8691989),
+reformatted with this repository's StyLua configuration.
 LibStub and CallbackHandler load before LibSharedMedia, and all three load before
 Ironfur Tracker's media settings.
 
